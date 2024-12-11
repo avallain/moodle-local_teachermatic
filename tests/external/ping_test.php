@@ -74,7 +74,7 @@ class ping_test extends externallib_advanced_testcase
         set_config('organisationid', 'org1', 'local_teachermatic');
 
         $this->expectException(invalid_parameter_exception::class);
-        $this->expectExceptionMessage(get_string('service:ping:invalidorganisationid', 'local_teachermatic'));
+        $this->expectExceptionMessage(get_string('service:invalidorganisationid', 'local_teachermatic'));
 
         $response = ping::execute('org2');
         $response = \core_external\external_api::clean_returnvalue(
@@ -90,7 +90,7 @@ class ping_test extends externallib_advanced_testcase
         unset_config('organisationid', 'local_teachermatic');
 
         $this->expectException(invalid_parameter_exception::class);
-        $this->expectExceptionMessage(get_string('service:ping:noorganisationid', 'local_teachermatic'));
+        $this->expectExceptionMessage(get_string('service:noorganisationid', 'local_teachermatic'));
 
         $response = ping::execute('org1');
         $response = \core_external\external_api::clean_returnvalue(
