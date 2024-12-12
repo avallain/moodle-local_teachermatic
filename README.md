@@ -18,6 +18,17 @@ teachermatic to save questions into Question Bank.
 3. Install the Plugin: Follow the on-screen instructions to complete the plugin installation.
 4. Configure the Plugin: After installation, configure the plugin settings as needed.
 
+## Available functions
+| Funtion name                            | Description                                    |
+|-----------------------------------------|------------------------------------------------|
+| `local_teachermatic_ping`               | Get the web service status                     |
+| `local_teachermatic_get_courses`        | Get the user enrolled courses by email address |
+| `local_teachermatic_create_multichoice` | Create multiple choice questions               |
+| `local_teachermatic_create_truefalse`   | Create true-false questions                    |
+| `local_teachermatic_create_shortanswer` | Create short answer questions                  |
+
+Detail available parameters can be found in the postman collection
+
 ## License
 
-Teachermatic
+> Teachermatic
