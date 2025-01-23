@@ -5,7 +5,7 @@
 		"description": "Teachermatic@2024",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "11477088",
-		"_collection_link": "https://orange-rocket-75033.postman.co/workspace/3ac8d657-92ba-476e-846e-9ac441828297/collection/11477088-13317229-27cb-4978-8ead-cdb3deda019b?action=share&source=collection_link&creator=11477088"
+		"_collection_link": "https://orange-rocket-75033.postman.co/workspace/Terus~3ac8d657-92ba-476e-846e-9ac441828297/collection/11477088-13317229-27cb-4978-8ead-cdb3deda019b?action=share&source=collection_link&creator=11477088"
 	},
 	"item": [
 		{
@@ -56,9 +56,9 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{staging_base_url}}?wsfunction=local_teachermatic_ping&moodlewsrestformat=json",
+					"raw": "{{base_url}}?wsfunction=local_teachermatic_ping&moodlewsrestformat=json",
 					"host": [
-						"{{staging_base_url}}"
+						"{{base_url}}"
 					],
 					"query": [
 						{
@@ -425,16 +425,16 @@
 					"urlencoded": [
 						{
 							"key": "email",
-							"value": "{{staging_teacher_email}}",
+							"value": "helpdesk@teruselearning.co.uk",
 							"description": "The user email address",
 							"type": "text"
 						}
 					]
 				},
 				"url": {
-					"raw": "{{staging_base_url}}?wsfunction=local_teachermatic_get_courses&moodlewsrestformat=json",
+					"raw": "{{base_url}}?wsfunction=local_teachermatic_get_courses&moodlewsrestformat=json",
 					"host": [
-						"{{staging_base_url}}"
+						"{{base_url}}"
 					],
 					"query": [
 						{
@@ -638,6 +638,709 @@
 			]
 		},
 		{
+			"name": "Get available courses with sections by user email address",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Response status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"",
+							"pm.test(\"Response contains the required fields - id, shortname, and fullname\", function () {",
+							"  const responseData = pm.response.json();",
+							"  ",
+							"  pm.expect(responseData).to.be.an('object');",
+							"  pm.expect(responseData.courses).to.be.an('array');",
+							"  ",
+							"  responseData.courses.forEach(function(course) {",
+							"    pm.expect(course).to.have.property('id').that.is.a('number');",
+							"    pm.expect(course).to.have.property('shortname').that.is.a('string');",
+							"    pm.expect(course).to.have.property('fullname').that.is.a('string');",
+							"  });",
+							"});",
+							"",
+							"",
+							"pm.test(\"Courses array is present and has expected number of elements\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData.courses).to.exist.and.to.be.an('array');",
+							"    pm.expect(responseData.courses).to.have.lengthOf(3);",
+							"});",
+							"",
+							"",
+							"pm.test(\"Email is in a valid format\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData.courses).to.be.an('array');",
+							"    responseData.courses.forEach(course => {",
+							"        pm.expect(course.email).to.match(/^([\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4})?$/);",
+							"    });",
+							"});",
+							"",
+							"",
+							"pm.test(\"Status property is present and has a boolean value\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.have.property('status').that.is.a('boolean');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "email",
+							"value": "helpdesk@teruselearning.co.uk",
+							"description": "The user email address",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url}}?wsfunction=local_teachermatic_get_courses_with_sections&moodlewsrestformat=json",
+					"host": [
+						"{{base_url}}"
+					],
+					"query": [
+						{
+							"key": "wsfunction",
+							"value": "local_teachermatic_get_courses_with_sections",
+							"description": "The service name"
+						},
+						{
+							"key": "moodlewsrestformat",
+							"value": "json",
+							"description": "The response format; Accept 'json', 'soap'"
+						}
+					]
+				},
+				"description": "### POST Request to Get Courses\n\nThis endpoint allows you to retrieve a list of courses associated with a specific email address.\n\n#### Request Body\n\n- `email` (string, required): The user email address.\n    \n\n#### Response\n\nThe response will contain an array of course objects with the following properties:\n\n- `id` (integer): The unique identifier of the course.\n    \n- `shortname` (string): The abbreviated name of the course.\n    \n- `fullname` (string): The full name of the course.\n    \n- `sections` (array): The course sections\n    \n\nIn case of an error, the response will include the following properties:\n\n- `exception` (string): Details of any exceptions that occurred.\n    \n- `errorcode` (string): Error code, if applicable.\n    \n- `message` (string): Error message, if applicable.\n    \n- `debuginfo` (string): Additional debug information, if available.\n    \n\n#### JSON Schema\n\n``` bash\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"status\": {\n      \"type\": \"boolean\"\n    },\n    \"organisation_id\": {\n      \"type\": \"string\"\n    },\n    \"courses\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"id\": {\n            \"type\": \"integer\"\n          },\n          \"shortname\": {\n            \"type\": \"string\"\n          },\n          \"fullname\": {\n            \"type\": \"string\"\n          },\n          \"sections\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"id\": {\n                  \"type\": \"integer\"\n                },\n                \"name\": {\n                  \"type\": \"string\"\n                }\n              }\n            }\n          }\n        }\n      }\n    },\n    \"exception\": {\n      \"type\": \"string\"\n    },\n    \"errorcode\": {\n      \"type\": \"string\"\n    },\n    \"message\": {\n      \"type\": \"string\"\n    },\n    \"debuginfo\": {\n      \"type\": \"string\"\n    }\n  }\n}\n\n ```"
+			},
+			"response": [
+				{
+					"name": "Invalid email address",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "https://moodle45.test/webservice/rest/server.php?wsfunction=local_teachermatic_get_courses&moodlewsrestformat=json&email=test@local.test",
+							"protocol": "https",
+							"host": [
+								"moodle45",
+								"test"
+							],
+							"path": [
+								"webservice",
+								"rest",
+								"server.php"
+							],
+							"query": [
+								{
+									"key": "wsfunction",
+									"value": "local_teachermatic_get_courses",
+									"description": "The service name"
+								},
+								{
+									"key": "moodlewsrestformat",
+									"value": "json",
+									"description": "The response format; Accept 'json', 'soap'"
+								},
+								{
+									"key": "email",
+									"value": "test@local.test",
+									"description": "The user email address"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Fri, 06 Dec 2024 04:02:39 GMT"
+						},
+						{
+							"key": "Server",
+							"value": "Apache/2.4.54 (Win64) OpenSSL/1.1.1q mod_fcgid/2.3.10-dev"
+						},
+						{
+							"key": "X-Powered-By",
+							"value": "PHP/8.2.9"
+						},
+						{
+							"key": "Cache-Control",
+							"value": "private, must-revalidate, pre-check=0, post-check=0, max-age=0"
+						},
+						{
+							"key": "Expires",
+							"value": "Thu, 01 Jan 1970 00:00:00 GMT"
+						},
+						{
+							"key": "Pragma",
+							"value": "no-cache"
+						},
+						{
+							"key": "Accept-Ranges",
+							"value": "none"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=5, max=100"
+						},
+						{
+							"key": "Connection",
+							"value": "Keep-Alive"
+						},
+						{
+							"key": "Transfer-Encoding",
+							"value": "chunked"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"exception\": \"core\\\\exception\\\\invalid_parameter_exception\",\n    \"errorcode\": \"invalidparameter\",\n    \"message\": \"Invalid parameter value detected\",\n    \"debuginfo\": \"The email address is not registered.\"\n}"
+				},
+				{
+					"name": "Success",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "email",
+									"value": "helpdesk@teruselearning.co.uk",
+									"description": "The user email address",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}?wsfunction=local_teachermatic_get_courses_with_sections&moodlewsrestformat=json",
+							"host": [
+								"{{base_url}}"
+							],
+							"query": [
+								{
+									"key": "wsfunction",
+									"value": "local_teachermatic_get_courses_with_sections",
+									"description": "The service name"
+								},
+								{
+									"key": "moodlewsrestformat",
+									"value": "json",
+									"description": "The response format; Accept 'json', 'soap'"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Thu, 23 Jan 2025 08:32:19 GMT"
+						},
+						{
+							"key": "Server",
+							"value": "Apache/2.4.37 (AlmaLinux) OpenSSL/1.1.1k"
+						},
+						{
+							"key": "Cache-Control",
+							"value": "private, must-revalidate, pre-check=0, post-check=0, max-age=0"
+						},
+						{
+							"key": "Expires",
+							"value": "Thu, 01 Jan 1970 00:00:00 GMT"
+						},
+						{
+							"key": "Pragma",
+							"value": "no-cache"
+						},
+						{
+							"key": "Accept-Ranges",
+							"value": "none"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=5, max=100"
+						},
+						{
+							"key": "Connection",
+							"value": "Keep-Alive"
+						},
+						{
+							"key": "Transfer-Encoding",
+							"value": "chunked"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"status\": true,\n    \"organisation_id\": \"eyJpdiI6IkNUcnBmOUE5TDBnUlFvTFljUXNWeXc9PSIsInZhbHVlIjoiN1ZGR2o1ckNOZFlqMys3VEpmUk84MlQ2cXRaVkIyN3BWWE5CVTZ1dWhKND0iLCJtYWMiOiI1MTRhOWMyNzI3ZmM5ZTQwOWJiNmMzMzIzZTM2MDMxNDEyODNiOTQwZmExNjU1NTA0ZWQ4NGFjZDFlNDY1ODYwIn0=\",\n    \"courses\": [\n        {\n            \"id\": 2,\n            \"shortname\": \"scorm\",\n            \"fullname\": \"scorm\",\n            \"sections\": [\n                {\n                    \"id\": 0,\n                    \"name\": \"General\"\n                },\n                {\n                    \"id\": 1,\n                    \"name\": \"Topic 1\"\n                },\n                {\n                    \"id\": 2,\n                    \"name\": \"Topic 2\"\n                },\n                {\n                    \"id\": 3,\n                    \"name\": \"Topic 3\"\n                },\n                {\n                    \"id\": 4,\n                    \"name\": \"Topic 4\"\n                }\n            ]\n        },\n        {\n            \"id\": 7,\n            \"shortname\": \"7\",\n            \"fullname\": \"7\",\n            \"sections\": [\n                {\n                    \"id\": 0,\n                    \"name\": \"General\"\n                },\n                {\n                    \"id\": 1,\n                    \"name\": \"Topic 1\"\n                },\n                {\n                    \"id\": 2,\n                    \"name\": \"Topic 2\"\n                },\n                {\n                    \"id\": 3,\n                    \"name\": \"Topic 3\"\n                },\n                {\n                    \"id\": 4,\n                    \"name\": \"Topic 4\"\n                }\n            ]\n        },\n        {\n            \"id\": 8,\n            \"shortname\": \"8\",\n            \"fullname\": \"8\",\n            \"sections\": [\n                {\n                    \"id\": 0,\n                    \"name\": \"General\"\n                },\n                {\n                    \"id\": 1,\n                    \"name\": \"Topic 1\"\n                },\n                {\n                    \"id\": 2,\n                    \"name\": \"Topic 2\"\n                },\n                {\n                    \"id\": 3,\n                    \"name\": \"Topic 3\"\n                },\n                {\n                    \"id\": 4,\n                    \"name\": \"Topic 4\"\n                }\n            ]\n        },\n        {\n            \"id\": 9,\n            \"shortname\": \"9\",\n            \"fullname\": \"9\",\n            \"sections\": [\n                {\n                    \"id\": 0,\n                    \"name\": \"General\"\n                },\n                {\n                    \"id\": 1,\n                    \"name\": \"Topic 1\"\n                },\n                {\n                    \"id\": 2,\n                    \"name\": \"Topic 2\"\n                },\n                {\n                    \"id\": 3,\n                    \"name\": \"Topic 3\"\n                },\n                {\n                    \"id\": 4,\n                    \"name\": \"Topic 4\"\n                }\n            ]\n        },\n        {\n            \"id\": 10,\n            \"shortname\": \"10\",\n            \"fullname\": \"10\",\n            \"sections\": [\n                {\n                    \"id\": 0,\n                    \"name\": \"General\"\n                },\n                {\n                    \"id\": 1,\n                    \"name\": \"Topic 1\"\n                },\n                {\n                    \"id\": 2,\n                    \"name\": \"Topic 2\"\n                },\n                {\n                    \"id\": 3,\n                    \"name\": \"Topic 3\"\n                },\n                {\n                    \"id\": 4,\n                    \"name\": \"Topic 4\"\n                }\n            ]\n        },\n        {\n            \"id\": 11,\n            \"shortname\": \"11\",\n            \"fullname\": \"11\",\n            \"sections\": [\n                {\n                    \"id\": 0,\n                    \"name\": \"General\"\n                },\n                {\n                    \"id\": 1,\n                    \"name\": \"Topic 1\"\n                },\n                {\n                    \"id\": 2,\n                    \"name\": \"Topic 2\"\n                },\n                {\n                    \"id\": 3,\n                    \"name\": \"Topic 3\"\n                },\n                {\n                    \"id\": 4,\n                    \"name\": \"Topic 4\"\n                }\n            ]\n        },\n        {\n            \"id\": 12,\n            \"shortname\": \"12\",\n            \"fullname\": \"12\",\n            \"sections\": [\n                {\n                    \"id\": 0,\n                    \"name\": \"General\"\n                },\n                {\n                    \"id\": 1,\n                    \"name\": \"Topic 1\"\n                },\n                {\n                    \"id\": 2,\n                    \"name\": \"Topic 2\"\n                },\n                {\n                    \"id\": 3,\n                    \"name\": \"Topic 3\"\n                },\n                {\n                    \"id\": 4,\n                    \"name\": \"Topic 4\"\n                }\n            ]\n        },\n        {\n            \"id\": 13,\n            \"shortname\": \"TeacherMatic\",\n            \"fullname\": \"TeacherMatic\",\n            \"sections\": []\n        },\n        {\n            \"id\": 14,\n            \"shortname\": \"grid format\",\n            \"fullname\": \"grid format\",\n            \"sections\": [\n                {\n                    \"id\": 0,\n                    \"name\": \"General\"\n                },\n                {\n                    \"id\": 1,\n                    \"name\": \"Study and Information Skills\"\n                },\n                {\n                    \"id\": 2,\n                    \"name\": \"Finding Information\"\n                },\n                {\n                    \"id\": 3,\n                    \"name\": \"E-Books\"\n                },\n                {\n                    \"id\": 4,\n                    \"name\": \"Effective Internet Searching \"\n                },\n                {\n                    \"id\": 5,\n                    \"name\": \"Referencing and Plagiarism\"\n                },\n                {\n                    \"id\": 6,\n                    \"name\": \"Plagiarism\"\n                },\n                {\n                    \"id\": 7,\n                    \"name\": \"Reading and Writing\"\n                },\n                {\n                    \"id\": 8,\n                    \"name\": \"Reading Techniques\"\n                },\n                {\n                    \"id\": 9,\n                    \"name\": \"Note-Taking\"\n                },\n                {\n                    \"id\": 10,\n                    \"name\": \"Academic Writing\"\n                },\n                {\n                    \"id\": 11,\n                    \"name\": \"Critical Thinking\"\n                },\n                {\n                    \"id\": 12,\n                    \"name\": \"Independent Learning\"\n                },\n                {\n                    \"id\": 13,\n                    \"name\": \"Time Management\"\n                },\n                {\n                    \"id\": 14,\n                    \"name\": \"Presentations\"\n                },\n                {\n                    \"id\": 15,\n                    \"name\": \"Revision and Exams\"\n                },\n                {\n                    \"id\": 16,\n                    \"name\": \"Managing Stress\"\n                },\n                {\n                    \"id\": 17,\n                    \"name\": \"Articles (journals/magazines/newspapers)\"\n                },\n                {\n                    \"id\": 18,\n                    \"name\": \"Books and eBooks\"\n                },\n                {\n                    \"id\": 19,\n                    \"name\": \"Diagrams/figures/logos/charts/graphs/tables\"\n                },\n                {\n                    \"id\": 20,\n                    \"name\": \"Market Reports\"\n                },\n                {\n                    \"id\": 21,\n                    \"name\": \"TV/Radio Programmes (Including Streaming Services)\"\n                },\n                {\n                    \"id\": 22,\n                    \"name\": \"Websites\"\n                },\n                {\n                    \"id\": 23,\n                    \"name\": \"Digital Technologies\"\n                },\n                {\n                    \"id\": 24,\n                    \"name\": \"Evaluating Information\"\n                }\n            ]\n        },\n        {\n            \"id\": 16,\n            \"shortname\": \"Multilanguage H5P\",\n            \"fullname\": \"Multilanguage H5P\",\n            \"sections\": [\n                {\n                    \"id\": 0,\n                    \"name\": \"General\"\n                },\n                {\n                    \"id\": 1,\n                    \"name\": \"Topic 1\"\n                },\n                {\n                    \"id\": 2,\n                    \"name\": \"Topic 2\"\n                },\n                {\n                    \"id\": 3,\n                    \"name\": \"Topic 3\"\n                },\n                {\n                    \"id\": 4,\n                    \"name\": \"Topic 4\"\n                }\n            ]\n        },\n        {\n            \"id\": 17,\n            \"shortname\": \"testyogi1\",\n            \"fullname\": \"TEST Yogi 1\",\n            \"sections\": [\n                {\n                    \"id\": 0,\n                    \"name\": \"General\"\n                },\n                {\n                    \"id\": 1,\n                    \"name\": \"Topic 1\"\n                },\n                {\n                    \"id\": 2,\n                    \"name\": \"Topic 2\"\n                },\n                {\n                    \"id\": 3,\n                    \"name\": \"Topic 3\"\n                },\n                {\n                    \"id\": 4,\n                    \"name\": \"Topic 4\"\n                }\n            ]\n        },\n        {\n            \"id\": 18,\n            \"shortname\": \"signature test\",\n            \"fullname\": \"signature test\",\n            \"sections\": [\n                {\n                    \"id\": 0,\n                    \"name\": \"General\"\n                },\n                {\n                    \"id\": 1,\n                    \"name\": \"Topic 1\"\n                },\n                {\n                    \"id\": 2,\n                    \"name\": \"Topic 2\"\n                },\n                {\n                    \"id\": 3,\n                    \"name\": \"Topic 3\"\n                },\n                {\n                    \"id\": 4,\n                    \"name\": \"Topic 4\"\n                }\n            ]\n        },\n        {\n            \"id\": 19,\n            \"shortname\": \"BLC TEST\",\n            \"fullname\": \"BLC TEST\",\n            \"sections\": [\n                {\n                    \"id\": 0,\n                    \"name\": \"General\"\n                },\n                {\n                    \"id\": 1,\n                    \"name\": \"Topic 1\"\n                },\n                {\n                    \"id\": 2,\n                    \"name\": \"Topic 2\"\n                },\n                {\n                    \"id\": 3,\n                    \"name\": \"Topic 3\"\n                },\n                {\n                    \"id\": 4,\n                    \"name\": \"Topic 4\"\n                }\n            ]\n        },\n        {\n            \"id\": 20,\n            \"shortname\": \"TM-STG\",\n            \"fullname\": \"TeacherMatic Staging\",\n            \"sections\": []\n        },\n        {\n            \"id\": 21,\n            \"shortname\": \"TMAPLUGIN\",\n            \"fullname\": \"Teachermatic test local plugin\",\n            \"sections\": [\n                {\n                    \"id\": 0,\n                    \"name\": \"General\"\n                },\n                {\n                    \"id\": 1,\n                    \"name\": \"Topic 1\"\n                },\n                {\n                    \"id\": 2,\n                    \"name\": \"Topic 2\"\n                },\n                {\n                    \"id\": 115,\n                    \"name\": \"Topic 115\"\n                }\n            ]\n        }\n    ]\n}"
+				}
+			]
+		},
+		{
+			"name": "Get available course sections by courseid",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Response status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"",
+							"pm.test(\"Response contains the required fields - id, shortname, and fullname\", function () {",
+							"  const responseData = pm.response.json();",
+							"  ",
+							"  pm.expect(responseData).to.be.an('object');",
+							"  pm.expect(responseData.courses).to.be.an('array');",
+							"  ",
+							"  responseData.courses.forEach(function(course) {",
+							"    pm.expect(course).to.have.property('id').that.is.a('number');",
+							"    pm.expect(course).to.have.property('shortname').that.is.a('string');",
+							"    pm.expect(course).to.have.property('fullname').that.is.a('string');",
+							"  });",
+							"});",
+							"",
+							"",
+							"pm.test(\"Courses array is present and has expected number of elements\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData.courses).to.exist.and.to.be.an('array');",
+							"    pm.expect(responseData.courses).to.have.lengthOf(3);",
+							"});",
+							"",
+							"",
+							"pm.test(\"Email is in a valid format\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData.courses).to.be.an('array');",
+							"    responseData.courses.forEach(course => {",
+							"        pm.expect(course.email).to.match(/^([\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4})?$/);",
+							"    });",
+							"});",
+							"",
+							"",
+							"pm.test(\"Status property is present and has a boolean value\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.have.property('status').that.is.a('boolean');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "email",
+							"value": "helpdesk@teruselearning.co.uk",
+							"description": "The user email address",
+							"type": "text"
+						},
+						{
+							"key": "course_id",
+							"value": "21",
+							"description": "The course id",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url}}?wsfunction=local_teachermatic_get_course_sections&moodlewsrestformat=json",
+					"host": [
+						"{{base_url}}"
+					],
+					"query": [
+						{
+							"key": "wsfunction",
+							"value": "local_teachermatic_get_course_sections",
+							"description": "The service name"
+						},
+						{
+							"key": "moodlewsrestformat",
+							"value": "json",
+							"description": "The response format; Accept 'json', 'soap'"
+						}
+					]
+				},
+				"description": "### POST Request to Get Courses\n\nThis endpoint allows you to retrieve a list of courses associated with a specific email address.\n\n#### Request Body\n\n- `email` (string, required): The email address for which the courses are to be retrieved.\n    \n\n#### Response\n\nThe response will contain an array of course objects with the following properties:\n\n- `id` (integer): The unique identifier of the course.\n    \n- `shortname` (string): The abbreviated name of the course.\n    \n- `fullname` (string): The full name of the course.\n    \n\nIn case of an error, the response will include the following properties:\n\n- `exception` (string): Details of any exceptions that occurred.\n    \n- `errorcode` (string): Error code, if applicable.\n    \n- `message` (string): Error message, if applicable.\n    \n- `debuginfo` (string): Additional debug information, if available."
+			},
+			"response": [
+				{
+					"name": "Success",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "email",
+									"value": "admin@moodle451.test",
+									"description": "The user email address",
+									"type": "text"
+								},
+								{
+									"key": "course_id",
+									"value": "2",
+									"description": "The course id",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{local_base_url}}?wsfunction=local_teachermatic_get_course_sections&moodlewsrestformat=json",
+							"host": [
+								"{{local_base_url}}"
+							],
+							"query": [
+								{
+									"key": "wsfunction",
+									"value": "local_teachermatic_get_course_sections",
+									"description": "The service name"
+								},
+								{
+									"key": "moodlewsrestformat",
+									"value": "json",
+									"description": "The response format; Accept 'json', 'soap'"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Mon, 20 Jan 2025 08:06:41 GMT"
+						},
+						{
+							"key": "Server",
+							"value": "Apache/2.4.62 (Win64) OpenSSL/3.1.7 mod_fcgid/2.3.10-dev"
+						},
+						{
+							"key": "X-Powered-By",
+							"value": "PHP/8.1.31"
+						},
+						{
+							"key": "Cache-Control",
+							"value": "private, must-revalidate, pre-check=0, post-check=0, max-age=0"
+						},
+						{
+							"key": "Expires",
+							"value": "Thu, 01 Jan 1970 00:00:00 GMT"
+						},
+						{
+							"key": "Pragma",
+							"value": "no-cache"
+						},
+						{
+							"key": "Accept-Ranges",
+							"value": "none"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=5, max=100"
+						},
+						{
+							"key": "Connection",
+							"value": "Keep-Alive"
+						},
+						{
+							"key": "Transfer-Encoding",
+							"value": "chunked"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"status\": true,\n    \"organisation_id\": \"foo\",\n    \"course\": {\n        \"id\": 2,\n        \"shortname\": \"Geography\",\n        \"fullname\": \"Geography: An introduction\",\n        \"format\": \"topics\",\n        \"sections\": [\n            {\n                \"id\": 1,\n                \"name\": \"General\"\n            },\n            {\n                \"id\": 2,\n                \"name\": \"Prerequisite\"\n            }\n        ]\n    }\n}"
+				}
+			]
+		},
+		{
+			"name": "Creata a mod_resource for a course",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Response status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"",
+							"pm.test(\"Response contains the required fields - id, shortname, and fullname\", function () {",
+							"  const responseData = pm.response.json();",
+							"  ",
+							"  pm.expect(responseData).to.be.an('object');",
+							"  pm.expect(responseData.courses).to.be.an('array');",
+							"  ",
+							"  responseData.courses.forEach(function(course) {",
+							"    pm.expect(course).to.have.property('id').that.is.a('number');",
+							"    pm.expect(course).to.have.property('shortname').that.is.a('string');",
+							"    pm.expect(course).to.have.property('fullname').that.is.a('string');",
+							"  });",
+							"});",
+							"",
+							"",
+							"pm.test(\"Courses array is present and has expected number of elements\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData.courses).to.exist.and.to.be.an('array');",
+							"    pm.expect(responseData.courses).to.have.lengthOf(3);",
+							"});",
+							"",
+							"",
+							"pm.test(\"Email is in a valid format\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData.courses).to.be.an('array');",
+							"    responseData.courses.forEach(course => {",
+							"        pm.expect(course.email).to.match(/^([\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4})?$/);",
+							"    });",
+							"});",
+							"",
+							"",
+							"pm.test(\"Status property is present and has a boolean value\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.have.property('status').that.is.a('boolean');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "email",
+							"value": "helpdesk@teruselearning.co.uk",
+							"description": "The user email address",
+							"type": "text"
+						},
+						{
+							"key": "course_id",
+							"value": "21",
+							"description": "The course id",
+							"type": "text"
+						},
+						{
+							"key": "section_id",
+							"value": "2",
+							"description": "The course section id. Use '0' for singleactivity course format",
+							"type": "text"
+						},
+						{
+							"key": "file_name",
+							"value": "Dummy PDF Bar",
+							"description": "The file name",
+							"type": "text"
+						},
+						{
+							"key": "file_url",
+							"value": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+							"description": "The file URL",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url}}?wsfunction=local_teachermatic_create_course_mod_resource&moodlewsrestformat=json",
+					"host": [
+						"{{base_url}}"
+					],
+					"query": [
+						{
+							"key": "wsfunction",
+							"value": "local_teachermatic_create_course_mod_resource",
+							"description": "The service name"
+						},
+						{
+							"key": "moodlewsrestformat",
+							"value": "json",
+							"description": "The response format; Accept 'json', 'soap'"
+						}
+					]
+				},
+				"description": "### POST Request to Create Course Module Resource\n\nThis endpoint allows you to create a new module resource for a specific course and section.\n\n#### Request Body\n\n- `email` (string, required): The user email address.\n    \n- `course_id` (string, required): The course id.\n    \n- `section_id` (string, required): The course section id. Use '0' for singleactivity course format.\n    \n- `file_name` (string, required): The file name.\n    \n- `file_url` (string, required): The file URL.\n    \n\n#### Response\n\nThe response will contain the following properties:\n\n- `status` (boolean): Indicates the success status of the request.\n    \n- `organisation_id` (string): The organization id, if applicable.\n    \n- `module` (object): The details of the created module resource, including its id, name, and module type."
+			},
+			"response": [
+				{
+					"name": "Success",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "email",
+									"value": "admin@moodle451.test",
+									"description": "The user email address",
+									"type": "text"
+								},
+								{
+									"key": "course_id",
+									"value": "2",
+									"description": "The course id",
+									"type": "text"
+								},
+								{
+									"key": "section_id",
+									"value": "1",
+									"description": "The course section id",
+									"type": "text"
+								},
+								{
+									"key": "file_name",
+									"value": "Dummy PDF",
+									"description": "The file name",
+									"type": "text"
+								},
+								{
+									"key": "file_url",
+									"value": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+									"description": "The file URL",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{local_base_url}}?wsfunction=local_teachermatic_create_course_activity_file&moodlewsrestformat=json",
+							"host": [
+								"{{local_base_url}}"
+							],
+							"query": [
+								{
+									"key": "wsfunction",
+									"value": "local_teachermatic_create_course_activity_file",
+									"description": "The service name"
+								},
+								{
+									"key": "moodlewsrestformat",
+									"value": "json",
+									"description": "The response format; Accept 'json', 'soap'"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Wed, 22 Jan 2025 12:01:47 GMT"
+						},
+						{
+							"key": "Server",
+							"value": "Apache/2.4.62 (Win64) OpenSSL/3.1.7 mod_fcgid/2.3.10-dev"
+						},
+						{
+							"key": "X-Powered-By",
+							"value": "PHP/8.1.31"
+						},
+						{
+							"key": "Cache-Control",
+							"value": "private, must-revalidate, pre-check=0, post-check=0, max-age=0"
+						},
+						{
+							"key": "Expires",
+							"value": "Thu, 01 Jan 1970 00:00:00 GMT"
+						},
+						{
+							"key": "Pragma",
+							"value": "no-cache"
+						},
+						{
+							"key": "Accept-Ranges",
+							"value": "none"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=5, max=100"
+						},
+						{
+							"key": "Connection",
+							"value": "Keep-Alive"
+						},
+						{
+							"key": "Transfer-Encoding",
+							"value": "chunked"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"status\": true,\n    \"organisation_id\": \"foo\",\n    \"module\": {\n        \"id\": 15,\n        \"name\": \"Dummy PDF\",\n        \"module\": \"resource\"\n    }\n}"
+				}
+			]
+		},
+		{
 			"name": "Create multi-choice question(s)",
 			"event": [
 				{
@@ -687,13 +1390,13 @@
 					"urlencoded": [
 						{
 							"key": "course_id",
-							"value": "{{staging_course_id}}",
+							"value": "2",
 							"description": "The course ID",
 							"type": "text"
 						},
 						{
 							"key": "email",
-							"value": "{{staging_teacher_email}}",
+							"value": "admin@local.test",
 							"description": "The user(teacher) email address",
 							"type": "text"
 						},
@@ -724,9 +1427,9 @@
 					]
 				},
 				"url": {
-					"raw": "{{staging_base_url}}?wsfunction=local_teachermatic_create_multichoice&moodlewsrestformat=json",
+					"raw": "{{base_url}}?wsfunction=local_teachermatic_create_multichoice&moodlewsrestformat=json",
 					"host": [
-						"{{staging_base_url}}"
+						"{{base_url}}"
 					],
 					"query": [
 						{
@@ -785,16 +1488,9 @@
 							]
 						},
 						"url": {
-							"raw": "https://moodle45.test/webservice/rest/server.php?wsfunction=local_teachermatic_create_multichoice&moodlewsrestformat=json",
-							"protocol": "https",
+							"raw": "{{local_base_url}}?wsfunction=local_teachermatic_create_multichoice&moodlewsrestformat=json",
 							"host": [
-								"moodle45",
-								"test"
-							],
-							"path": [
-								"webservice",
-								"rest",
-								"server.php"
+								"{{local_base_url}}"
 							],
 							"query": [
 								{
@@ -943,13 +1639,13 @@
 					"urlencoded": [
 						{
 							"key": "course_id",
-							"value": "{{staging_course_id}}",
+							"value": "2",
 							"description": "The course ID",
 							"type": "text"
 						},
 						{
 							"key": "email",
-							"value": "{{staging_teacher_email}}",
+							"value": "admin@local.test",
 							"description": "The user(teacher) email address",
 							"type": "text"
 						},
@@ -980,9 +1676,9 @@
 					]
 				},
 				"url": {
-					"raw": "{{staging_base_url}}?wsfunction=local_teachermatic_create_truefalse&moodlewsrestformat=json",
+					"raw": "{{base_url}}?wsfunction=local_teachermatic_create_truefalse&moodlewsrestformat=json",
 					"host": [
-						"{{staging_base_url}}"
+						"{{base_url}}"
 					],
 					"query": [
 						{
@@ -1041,16 +1737,9 @@
 							]
 						},
 						"url": {
-							"raw": "https://moodle45.test/webservice/rest/server.php?wsfunction=local_teachermatic_create_truefalse&moodlewsrestformat=json",
-							"protocol": "https",
+							"raw": "{{local_base_url}}?wsfunction=local_teachermatic_create_truefalse&moodlewsrestformat=json",
 							"host": [
-								"moodle45",
-								"test"
-							],
-							"path": [
-								"webservice",
-								"rest",
-								"server.php"
+								"{{local_base_url}}"
 							],
 							"query": [
 								{
@@ -1175,13 +1864,13 @@
 					"urlencoded": [
 						{
 							"key": "course_id",
-							"value": "{{staging_course_id}}",
+							"value": "2",
 							"description": "The course ID",
 							"type": "text"
 						},
 						{
 							"key": "email",
-							"value": "{{staging_teacher_email}}",
+							"value": "admin@local.test",
 							"description": "The user(teacher) email address",
 							"type": "text"
 						},
@@ -1224,9 +1913,9 @@
 					]
 				},
 				"url": {
-					"raw": "{{staging_base_url}}?wsfunction=local_teachermatic_create_shortanswer&moodlewsrestformat=json",
+					"raw": "{{base_url}}?wsfunction=local_teachermatic_create_shortanswer&moodlewsrestformat=json",
 					"host": [
-						"{{staging_base_url}}"
+						"{{base_url}}"
 					],
 					"query": [
 						{
@@ -1302,16 +1991,9 @@
 							]
 						},
 						"url": {
-							"raw": "https://moodle45.test/webservice/rest/server.php?wsfunction=local_teachermatic_create_shortanswer&moodlewsrestformat=json",
-							"protocol": "https",
+							"raw": "{{local_base_url}}?wsfunction=local_teachermatic_create_shortanswer&moodlewsrestformat=json",
 							"host": [
-								"moodle45",
-								"test"
-							],
-							"path": [
-								"webservice",
-								"rest",
-								"server.php"
+								"{{local_base_url}}"
 							],
 							"query": [
 								{
@@ -1391,7 +2073,7 @@
 		"apikey": [
 			{
 				"key": "value",
-				"value": "{{staging_token}}",
+				"value": "{{token}}",
 				"type": "string"
 			},
 			{
@@ -1431,12 +2113,12 @@
 	"variable": [
 		{
 			"key": "local_base_url",
-			"value": "https://moodle45.test/webservice/rest/server.php",
+			"value": "https://moodle451.test/webservice/rest/server.php",
 			"type": "string"
 		},
 		{
 			"key": "local_token",
-			"value": "b372d73896bd5babac83c0cc0755cbbe",
+			"value": "f1d9c77df9c620c433b57976f04b00b1",
 			"type": "string"
 		},
 		{
@@ -1477,6 +2159,21 @@
 		{
 			"key": "local_couurse_id",
 			"value": "3",
+			"type": "string"
+		},
+		{
+			"key": "base_url",
+			"value": "https://moodle411.test/webservice/rest/server.php",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "14997c5fc639c148db505055339196fa",
+			"type": "string"
+		},
+		{
+			"key": "email",
+			"value": "admin@local.test",
 			"type": "string"
 		}
 	]

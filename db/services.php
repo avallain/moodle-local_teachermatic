@@ -35,7 +35,7 @@ $functions = [
     'local_teachermatic_get_courses' => [
         'classname'   => 'local_teachermatic\external\get_courses',
         'methodname' => 'execute',
-        'description' => 'Get the user enrolled courses by email address.',
+        'description' => 'Get the user enrolled courses where the use is editing-teacher by the email address.',
         'type' => 'read',
         'ajax' => true
     ],
@@ -60,6 +60,27 @@ $functions = [
         'type' => 'create',
         'ajax' => true
     ],
+    'local_teachermatic_get_course_sections' => [
+        'classname'   => 'local_teachermatic\external\get_course_sections',
+        'methodname' => 'execute',
+        'description' => 'Get course sections by courseid.',
+        'type' => 'read',
+        'ajax' => true
+    ],
+    'local_teachermatic_create_course_mod_resource' => [
+        'classname'   => 'local_teachermatic\external\create_course_mod_resource',
+        'methodname' => 'execute',
+        'description' => 'Create a mod_resource activity into a course.',
+        'type' => 'create',
+        'ajax' => true
+    ],
+    'local_teachermatic_get_courses_with_sections' => [
+        'classname'   => 'local_teachermatic\external\get_courses_with_sections',
+        'methodname' => 'execute',
+        'description' => 'Get the user enrolled courses with it is sections where the user is editing-teacher by the user email address.',
+        'type' => 'read',
+        'ajax' => true
+    ],
 ];
 
 $services = [
@@ -70,6 +91,9 @@ $services = [
             'local_teachermatic_create_multichoice',
             'local_teachermatic_create_truefalse',
             'local_teachermatic_create_shortanswer',
+            'local_teachermatic_get_course_sections',
+            'local_teachermatic_create_course_mod_resource',
+            'local_teachermatic_get_courses_with_sections',
         ],
         'restrictedusers' => 0,
         'enabled' => 1,
