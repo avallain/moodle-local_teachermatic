@@ -45,7 +45,7 @@ class create_course_mod_resource extends external_api
     {
         return new external_function_parameters([
             'course_id' => new external_value(PARAM_INT, 'The course ID', VALUE_REQUIRED),
-            'section_id' => new external_value(PARAM_INT, 'The section ID', VALUE_REQUIRED),
+            'section_id' => new external_value(PARAM_INT, 'The section ID', VALUE_OPTIONAL, 0),
             'email' => new external_value(PARAM_EMAIL, 'The user email address', VALUE_REQUIRED),
             'file_name' => new external_value(PARAM_TEXT, 'The file name', VALUE_REQUIRED),
             'file_url' => new external_value(PARAM_URL, 'The file downloadable url', VALUE_REQUIRED),
