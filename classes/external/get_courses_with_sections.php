@@ -1,4 +1,6 @@
 <?php
+
+
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -25,14 +27,14 @@ use core_external\external_value;
 use core_user;
 
 /**
- * Web service to get available courses by the user email address
+ * Web service to get available courses and it's sections by the user email address
  * where the user is enrolled as 'editingteacher'.
  *
  * @package   local_teachermatic
  * @copyright 2024, Teachermatic <teachermatic.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class get_courses extends external_api
+class get_courses_with_sections extends external_api
 {
     public static function execute_parameters(): external_function_parameters
     {
@@ -44,28 +46,28 @@ class get_courses extends external_api
     public static function execute(string $email): array
     {
         global $DB;
-        
+
         $params = self::validate_parameters(self::execute_parameters(), ['email' => $email]);
 
         $storedOrgId = get_config('local_teachermatic', 'organisationid');
         if (!$storedOrgId) {
             throw new invalid_parameter_exception(get_string('service:noorganisationid', 'local_teachermatic'));
         }
-        
+
         $selectedUser = core_user::get_user_by_email($params['email'], 'id');
         if (!$selectedUser) {
             throw new invalid_parameter_exception(get_string('service:invalidemail', 'local_teachermatic'));
         }
 
         $editingTeacherRole = $DB->get_record(
-            'role', 
+            'role',
             ['shortname' => 'editingteacher'],
             '*',
             MUST_EXIST
         );
 
         $userCoursesQuery = "
-            SELECT c.id, c.fullname, c.shortname
+            SELECT c.*
             FROM {role_assignments} ra
             JOIN {context} ctx ON ctx.id = ra.contextid
             JOIN {course} c ON c.id = ctx.instanceid
@@ -79,10 +81,40 @@ class get_courses extends external_api
             'contextlevel' => CONTEXT_COURSE
         ]);
 
+        $formattedUserCourses = [];
+        foreach ($userCourses as $userCourse) {
+            $courseSections = get_fast_modinfo($userCourse)->get_section_info_all();
+            $courseFormat = course_get_format($userCourse);
+
+            $formattedUserCourseSections = [];
+            if ($courseFormat->get_format() !== 'singleactivity') {
+                foreach ($courseSections as $courseSection) {
+
+                    $sectionName = $courseSection->name;
+
+                    if ($sectionName == null) {
+                        $sectionName = $courseFormat->get_default_section_name($courseSection);
+                    };
+
+                    $formattedUserCourseSections[] = [
+                        'id' => $courseSection->section,
+                        'name' => $sectionName,
+                    ];
+                }
+            }
+
+            $formattedUserCourses[] = [
+                'id' => $userCourse->id,
+                'fullname' => $userCourse->fullname,
+                'shortname' => $userCourse->shortname,
+                'sections' => $formattedUserCourseSections,
+            ];
+        }
+
         return [
             'status' => true,
             'organisation_id' => $storedOrgId,
-            'courses' => (!empty($userCourses)) ? $userCourses : [],
+            'courses' => (count($formattedUserCourses) > 0) ? $formattedUserCourses : [],
         ];
     }
 
@@ -90,14 +122,21 @@ class get_courses extends external_api
     {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'The web service status'),
-            'organisation_id' => new external_value(PARAM_TEXT, 'The organisation ID'),
+            'organisation_id' => new external_value(PARAM_TEXT, 'The organisation id'),
             'courses' => new external_multiple_structure(
                 new external_single_structure([
                     'id' => new external_value(PARAM_INT, 'The course id'),
                     'shortname' => new external_value(PARAM_TEXT, 'The course short name'),
                     'fullname' => new external_value(PARAM_TEXT, 'The course full name'),
+                    'sections' => new external_multiple_structure(
+                        new external_single_structure([
+                            'id' => new external_value(PARAM_INT, 'The section id'),
+                            'name' => new external_value(PARAM_TEXT, 'The section name'),
+                        ])
+                    )
                 ])
             )
         ]);
     }
 }
+
