@@ -33,3 +33,5 @@ $string['service:create_multichoice:invalidrole'] = 'The user account is not all
 $string['service:create_truefalse:invalidrole'] = 'The user account is not allowed to create question(s).';
 $string['service:create_shortanswer:invalidrole'] = 'The user account is not allowed to create question(s).';
 $string['privacy:metadata'] = 'The Teachermatic external service only intercat with course(s) especially Question Bank it is only uses user email address and the course ID that is stored within Moodle data.';
+$string['service:get_course_sections:invalidrole'] = 'The user account is not an editing teacher account.';
+$string['service:create_course_mod_resource:invalidrole'] = 'The user account is not an editing teacher account.';
