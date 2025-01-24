@@ -1,0 +1,28 @@
+stages:
+  - release
+
+variables:
+  PLUGIN_NAME: "teachermatic"
+
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: manual
+  before_script:
+    - apk update && apk add zip
+  script:
+    - mkdir $PLUGIN_NAME
+    - tar --exclude='.git' -cf - . | (cd $PLUGIN_NAME && tar -xf - && rm -rf $PLUGIN_NAME)
+    - zip -r moodle-local_$PLUGIN_NAME-$CI_COMMIT_TAG.zip $PLUGIN_NAME
+  artifacts:
+    paths:
+      - moodle-local_$PLUGIN_NAME-$CI_COMMIT_TAG.zip
+  release:
+    tag_name: '$CI_COMMIT_TAG'
+    description: '$CI_COMMIT_TAG'
+    assets:
+      links:
+        - name: "moodle-local_$PLUGIN_NAME-$CI_COMMIT_TAG.zip"
+          url: "${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/raw/moodle-local_$PLUGIN_NAME-$CI_COMMIT_TAG.zip"
