@@ -1,7 +1,6 @@
 # Teachermatic Web Service
 
-Teachermatic web service is a moodle local plugin that communicate with
-teachermatic to save questions into Question Bank.
+Teachermatic Web Service is a Moodle local plugin designed to facilitate communication with the Teachermatic application for saving questions into the Moodle Question Bank.
 
 ## Installation
 
@@ -19,6 +18,7 @@ teachermatic to save questions into Question Bank.
 4. Configure the Plugin: After installation, configure the plugin settings as needed.
 
 ## Available functions
+The following functions are exposed by the Teachermatic Web Service:
 
 | Funtion name                                    | Description                                                                                                    |
 |-------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
@@ -30,9 +30,13 @@ teachermatic to save questions into Question Bank.
 | `local_teachermatic_create_course_mod_resource` | Create a mod_resource activity into a course.                                                                  |
 | `local_teachermatic_get_courses_with_sections`  | Get the user enrolled courses with it is sections where the user is editing-teacher by the user email address. |
 
+Detailed information about required parameters for each function can be found in the accompanying Postman collection.
 
-Detail available parameters can be found in the postman collection
+## Issues and Feedback
 
-## License
+If you encounter any issues or bugs, or have recommendations for new features, please feel free to **open an issue** on this repository.
+Your feedback helps us improve Teachermatic Web Service.
 
-> Teachermatic
+## Copyright
+
+© Teachermatic. All rights reserved.
