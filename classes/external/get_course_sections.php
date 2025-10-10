@@ -35,84 +35,86 @@ use core_user;
  */
 class get_course_sections extends external_api
 {
-    public static function execute_parameters(): external_function_parameters
-    {
+    /**
+     * Returns description of method parameters
+     * @return external_function_parameters
+     */
+    public static function execute_parameters(): external_function_parameters {
         return new external_function_parameters([
             'course_id' => new external_value(PARAM_INT, 'The course ID', VALUE_REQUIRED),
             'email' => new external_value(PARAM_EMAIL, 'The user email address', VALUE_REQUIRED),
         ]);
     }
 
-    public static function execute(int $courseId, string $email): array
-    {
-        global $DB;
-
+    /**
+     * Fetch and returns course sections.
+     * @param integer $courseid
+     * @param string $email
+     * @return array
+     */
+    public static function execute(int $courseid, string $email): array {
         $params = self::validate_parameters(self::execute_parameters(), [
             'email' => $email,
-            'course_id' => $courseId,
+            'course_id' => $courseid,
         ]);
 
-        $storedOrgId = get_config('local_teachermatic', 'organisationid');
-        if (!$storedOrgId) {
+        $contextcourse = context_course::instance($params['course_id']);
+        self::validate_context($contextcourse);
+
+        $organisationid = get_config('local_teachermatic', 'organisationid');
+        if (!$organisationid) {
             throw new invalid_parameter_exception(get_string('service:noorganisationid', 'local_teachermatic'));
         }
 
-        $selectedUser = core_user::get_user_by_email($params['email'], 'id');
-        if (!$selectedUser) {
+        $user = core_user::get_user_by_email($params['email'], 'id');
+        if (!$user) {
             throw new invalid_parameter_exception(get_string('service:invalidemail', 'local_teachermatic'));
         }
 
-        $contextCourse = context_course::instance($params['course_id']);
-        self::validate_context($contextCourse);
-
-        $selectedUserRoles = get_user_roles_in_course($selectedUser->id, $params['course_id']);
-        $selectedUserRoles = explode(',', strtolower($selectedUserRoles));
-        $selectedUserRoles = array_map(fn($value): string => trim(strip_tags($value)), $selectedUserRoles);
-
-        if(!in_array('teacher', $selectedUserRoles)){ // teacher == editingteacher
-            throw new invalid_parameter_exception(get_string('service:get_course_sections:invalidrole', 'local_teachermatic'));
-        }
+        require_capability('moodle/course:update', $contextcourse, $user->id);
 
         $course = get_course($params['course_id']);
-        $courseFormat = course_get_format($course);
-        $courseSections = get_fast_modinfo($course->id)->get_section_info_all();
+        $format = course_get_format($course);
+        $sections = get_fast_modinfo($course->id)->get_section_info_all();
 
-        $formattedCourseSections = [];
+        $normalizedsections = [];
 
         // Excluding sections for course that use singleactivity format
-        // since there is no sections available
-        if ($courseFormat->get_format() !== 'singleactivity') {
-            foreach ($courseSections as $courseSection) {
+        // since there is no sections available.
+        if ($format->get_format() !== 'singleactivity') {
+            foreach ($sections as $section) {
+                $name = $section->name;
 
-                $sectionName = $courseSection->name;
-
-                if ($sectionName == null) {
-                    $sectionName = course_get_format($course)
-                        ->get_default_section_name($courseSection);
+                if ($name == null) {
+                    $name = course_get_format($course)
+                        ->get_default_section_name($section);
                 };
 
-                $formattedCourseSections[] = [
-                    'id' => $courseSection->section,
-                    'name' => $sectionName,
+                $normalizedsections[] = [
+                    'id' => $section->section,
+                    'name' => $name,
                 ];
             }
         }
 
         return [
             'status' => true,
-            'organisation_id' => $storedOrgId,
+            'organisation_id' => $organisationid,
             'course' => [
                 'id' => $course->id,
                 'shortname' => $course->shortname,
                 'fullname' => $course->fullname,
-                'format' => $courseFormat->get_format(),
-                'sections' => $formattedCourseSections
-            ]
+                'format' => $format->get_format(),
+                'sections' => $normalizedsections,
+            ],
         ];
     }
 
-    public static function execute_returns(): external_single_structure
-    {
+    /**
+     * Return description of method result value
+     * @return external_single_structure
+     */
+    public static function execute_returns(): external_single_structure {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'The web service status'),
             'organisation_id' => new external_value(PARAM_TEXT, 'The organisation ID'),
@@ -126,7 +128,7 @@ class get_course_sections extends external_api
                         'id' => new external_value(PARAM_INT, 'The section id'),
                         'name' => new external_value(PARAM_TEXT, 'The section name'),
                     ])
-                )
+                ),
             ]),
         ]);
     }

@@ -17,7 +17,7 @@
 namespace local_teachermatic\privacy;
 
 /**
- * Privacy API implementation 
+ * Privacy API implementation
  *
  * @package   local_teachermatic
  * @copyright 2024, Teachermatic <teachermatic.com>
@@ -25,9 +25,11 @@ namespace local_teachermatic\privacy;
  */
 class provider implements \core_privacy\local\metadata\null_provider
 {
-
-    public static function get_reason(): string
-    {
+    /**
+     * Return privacy metadata reason
+     * @return string
+     */
+    public static function get_reason(): string {
         return 'privacy:metadata';
     }
 }

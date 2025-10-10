@@ -25,32 +25,37 @@ use externallib_advanced_testcase;
 /**
  * Unit tests for the create_shortanswer function.
  *
- * @package     local_teachermatic
- * @category    external
- * @copyright   2024, Teachermatic <teachermatic.com>
- * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package             local_teachermatic
+ * @group               local_teachermatic
+ * @category            external
+ * @coversDefaultClass  \local_teachermatic\external\create_shortanswer
+ * @copyright           2024, Teachermatic <teachermatic.com>
+ * @license             http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class create_shortanswer_test extends externallib_advanced_testcase
+final class create_shortanswer_test extends externallib_advanced_testcase
 {
-
-    public function test_execute_with_valid_payloads(): void
-    {
+    /**
+     * Test the execute function with valid payload.
+     * @covers ::execute
+     * @return void
+     */
+    public function test_execute_with_valid_payloads(): void {
         $this->resetAfterTest(true);
 
         set_config('organisationid', 'org1', 'local_teachermatic');
-        
+
         $user = $this->getDataGenerator()->create_user([
-            'email' => 'teacher1@local.test'
+            'email' => 'teacher1@local.test',
         ]);
-        
+
         $this->setUser($user);
-        
+
         $course = $this->getDataGenerator()->create_course([
-            'name' => 'Test Course'
+            'name' => 'Test Course',
         ]);
-        
+
         $this->getDataGenerator()->enrol_user($user->id, $course->id, 'editingteacher');
-        
+
         $questions = [
             [
                 'question' => 'Foo Bar Bazz',
@@ -59,9 +64,9 @@ class create_shortanswer_test extends externallib_advanced_testcase
                     'Bar',
                     'Baz',
                 ],
-            ]
+            ],
         ];
-        
+
         $response = create_shortanswer::execute($course->id, 'teacher1@local.test', $questions);
         $response = \core_external\external_api::clean_returnvalue(
             create_shortanswer::execute_returns(),

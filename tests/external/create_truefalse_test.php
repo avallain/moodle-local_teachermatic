@@ -25,41 +25,46 @@ use externallib_advanced_testcase;
 /**
  * Unit tests for the create_truefalse function.
  *
- * @package     local_teachermatic
- * @category    external
- * @copyright   2024, Teachermatic <teachermatic.com>
- * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package             local_teachermatic
+ * @group               local_teachermatic
+ * @category            external
+ * @coversDefaultClass  \local_teachermatic\external\create_truefalse
+ * @copyright           2024, Teachermatic <teachermatic.com>
+ * @license             http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class create_truefalse_test extends externallib_advanced_testcase
+final class create_truefalse_test extends externallib_advanced_testcase
 {
-
-    public function test_execute_with_valid_payloads(): void
-    {
+    /**
+     * Test the execute function with valid payload.
+     * @covers ::execute
+     * @return void
+     */
+    public function test_execute_with_valid_payloads(): void {
         global $DB;
-        
+
         $this->resetAfterTest(true);
 
         set_config('organisationid', 'org1', 'local_teachermatic');
-        
+
         $user = $this->getDataGenerator()->create_user([
-            'email' => 'teacher1@local.test'
+            'email' => 'teacher1@local.test',
         ]);
-        
+
         $this->setUser($user);
-        
+
         $course = $this->getDataGenerator()->create_course([
-            'name' => 'Test Course'
+            'name' => 'Test Course',
         ]);
-        
+
         $this->getDataGenerator()->enrol_user($user->id, $course->id, 'editingteacher');
-        
+
         $questions = [
             [
                 'question' => 'Foo',
                 'answer' => 1,
-            ]
+            ],
         ];
-        
+
         $response = create_truefalse::execute($course->id, 'teacher1@local.test', $questions);
         $response = \core_external\external_api::clean_returnvalue(
             create_truefalse::execute_returns(),
