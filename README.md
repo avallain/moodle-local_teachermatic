@@ -1,7 +1,7 @@
 # Teachermatic Web Service
 
-Teachermatic web service is a moodle local plugin that communicate with
-[Teachermatic](https://teachermatic.com) to save questions into Question Bank.
+The TeacherMatic Moodle plugin is a local plugin that communicates with
+[Teachermatic](https://teachermatic.com) to allow the exporting of files and quizzes from TeacherMatic into Moodle courses and question banks. 
 
 ![Teachermatic logo](pix/teachermatic.svg)
 
