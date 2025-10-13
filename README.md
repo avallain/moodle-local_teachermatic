@@ -1,7 +1,7 @@
 # Teachermatic Web Service
 
 The TeacherMatic Moodle plugin is a local plugin that communicates with
-[Teachermatic](https://teachermatic.com) to allow the exporting of files and quizzes from TeacherMatic into Moodle courses and question banks. 
+[Teachermatic](https://teachermatic.com) to allow the exporting of files and quizzes from TeacherMatic into Moodle courses and question banks.
 
 ![Teachermatic logo](pix/teachermatic.svg)
 
@@ -32,21 +32,6 @@ an valid organisation subscription is a separate process. Your support is apprec
 1. Extract the contents of the ZIP file to the `local/teachermatic` directory of your Moodle installation.
 2. Go to **Site administration** > **Notifications**.
 3. Follow the on-screen instructions to install the plugin.
-
-## Available functions
-
-| Funtion name                                    | Description                                                                                                    |
-|-------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
-| `local_teachermatic_ping`                       | Get the web service status                                                                                     |
-| `local_teachermatic_get_courses`                | Get the user enrolled courses by email address                                                                 |
-| `local_teachermatic_create_multichoice`         | Create multiple choice questions                                                                               |
-| `local_teachermatic_create_truefalse`           | Create true-false questions                                                                                    |
-| `local_teachermatic_create_shortanswer`         | Create short answer questions                                                                                  |
-| `local_teachermatic_create_course_mod_resource` | Create a mod_resource activity into a course.                                                                  |
-| `local_teachermatic_get_courses_with_sections`  | Get the user enrolled courses with it is sections where the user is editing-teacher by the user email address. |
-
-
-Detail available parameters can be found in the postman collection
 
 ## After installation
 
