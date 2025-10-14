@@ -88,14 +88,6 @@ class create_multichoice extends external_api
 
         require_capability('moodle/question:add', $contextcourse, $user->id);
 
-        $userroles = get_user_roles_in_course($user->id, $params['course_id']);
-        $userroles = explode(',', strtolower($userroles));
-        $userroles = array_map(fn($value): string => trim(strip_tags($value)), $userroles);
-
-        if (!in_array('teacher', $userroles)) { // Role teacher == editingteacher.
-            throw new invalid_parameter_exception(get_string('service:create_multichoice:invalidrole', 'local_teachermatic'));
-        }
-
         foreach ($params['questions'] as $question) {
             // Context thingy.
             $contexts = new \core_question\local\bank\question_edit_contexts($contextcourse);

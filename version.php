@@ -24,7 +24,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2025100900;
+$plugin->version = 2025101400;
 $plugin->requires = 2023042400;
 $plugin->component = 'local_teachermatic';
 $plugin->maturity = MATURITY_STABLE;
