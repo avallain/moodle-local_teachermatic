@@ -22,8 +22,9 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-if ($hassiteconfig) {
+defined('MOODLE_INTERNAL') || die();
 
+if ($hassiteconfig) {
     $settings = new admin_settingpage('local_teachermatic', get_string('settings:title', 'local_teachermatic'));
 
     $ADMIN->add('localplugins', $settings);

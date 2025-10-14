@@ -25,30 +25,35 @@ use externallib_advanced_testcase;
 /**
  * Unit tests for the get_courses_with_sections function.
  *
- * @package     local_teachermatic
- * @category    external
- * @copyright   2024, Teachermatic <teachermatic.com>
- * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package             local_teachermatic
+ * @group               local_teachermatic
+ * @category            external
+ * @coversDefaultClass  \local_teachermatic\external\get_courses_with_sections
+ * @copyright           2024, Teachermatic <teachermatic.com>
+ * @license             http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class get_courses_with_sections_test extends externallib_advanced_testcase
+final class get_courses_with_sections_test extends externallib_advanced_testcase
 {
-
-    public function test_execute_with_valid_teacher_email(): void
-    {
+    /**
+     * Test the execute function with valid payload.
+     * @covers ::execute
+     * @return void
+     */
+    public function test_execute_with_valid_teacher_email(): void {
         $this->resetAfterTest(true);
 
         set_config('organisationid', 'org1', 'local_teachermatic');
-        
+
         $user = $this->getDataGenerator()->create_user([
-            'email' => 'teacher1@local.test'
+            'email' => 'teacher1@local.test',
         ]);
-        
+
         $course = $this->getDataGenerator()->create_course([
-            'name' => 'Test Course'
+            'name' => 'Test Course',
         ]);
-        
+
         $this->getDataGenerator()->enrol_user($user->id, $course->id, 'editingteacher');
-        
+
         $response = get_courses_with_sections::execute('teacher1@local.test');
         $response = \core_external\external_api::clean_returnvalue(
             get_courses_with_sections::execute_returns(),

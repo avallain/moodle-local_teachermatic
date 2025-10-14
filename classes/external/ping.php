@@ -31,30 +31,37 @@ use core_external\external_value;
  */
 class ping extends external_api
 {
-    public static function execute_parameters(): external_function_parameters
-    {
+    /**
+     * Returns description of method parameters
+     * @return external_function_parameters
+     */
+    public static function execute_parameters(): external_function_parameters {
         return new external_function_parameters([
-            'organisation_id' => new external_value(PARAM_TEXT, 'The organisation ID', VALUE_DEFAULT, '-1')
+            'organisation_id' => new external_value(PARAM_TEXT, 'The organisation ID', VALUE_DEFAULT, '-1'),
         ]);
     }
 
-    public static function execute(string $organisationId): array
-    {
-        $params = self::validate_parameters(self::execute_parameters(), ['organisation_id' => $organisationId]);
+    /**
+     * Ping :)
+     * @param string $organisationid
+     * @return array
+     */
+    public static function execute(string $organisationid): array {
+        $params = self::validate_parameters(self::execute_parameters(), ['organisation_id' => $organisationid]);
 
         if ($params['organisation_id'] == '-1') {
-            // just tell them that we are live :)
+            // Just tell them that we are live :).
             return [
                 'status' => true,
             ];
         }
 
-        $storedOrgId = get_config('local_teachermatic', 'organisationid');
-        if (!$storedOrgId) {
+        $configuredorganisationid = get_config('local_teachermatic', 'organisationid');
+        if (!$configuredorganisationid) {
             throw new invalid_parameter_exception(get_string('service:noorganisationid', 'local_teachermatic'));
         }
 
-        if ($storedOrgId != $params['organisation_id']) {
+        if ($configuredorganisationid != $params['organisation_id']) {
             throw new invalid_parameter_exception(get_string('service:invalidorganisationid', 'local_teachermatic'));
         }
 
@@ -63,8 +70,11 @@ class ping extends external_api
         ];
     }
 
-    public static function execute_returns(): external_single_structure
-    {
+    /**
+     * Return description of method result value
+     * @return external_single_structure
+     */
+    public static function execute_returns(): external_single_structure {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'The web service status'),
         ]);

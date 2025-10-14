@@ -26,15 +26,21 @@ use externallib_advanced_testcase;
 /**
  * Unit tests for the ping function.
  *
- * @package     local_teachermatic
- * @category    external
- * @copyright   2024, Teachermatic <teachermatic.com>
- * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package             local_teachermatic
+ * @group               local_teachermatic
+ * @category            external
+ * @coversDefaultClass  \local_teachermatic\external\ping
+ * @copyright           2024, Teachermatic <teachermatic.com>
+ * @license             http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class ping_test extends externallib_advanced_testcase
+final class ping_test extends externallib_advanced_testcase
 {
-    public function test_execute_success(): void
-    {
+    /**
+     * Test the execute that for sure returning true.
+     * @covers ::execute
+     * @return void
+     */
+    public function test_execute_success(): void {
         $this->resetAfterTest(true);
 
         $response = ping::execute('-1');
@@ -49,8 +55,12 @@ class ping_test extends externallib_advanced_testcase
         $this->assertTrue($response['status']);
     }
 
-    public function test_execute_with_valid_organisation_id(): void
-    {
+    /**
+     * Test the execute with valid organisationid.
+     * @covers ::execute
+     * @return void
+     */
+    public function test_execute_with_valid_organisation_id(): void {
         $this->resetAfterTest(true);
 
         set_config('organisationid', 'org1', 'local_teachermatic');
@@ -67,8 +77,12 @@ class ping_test extends externallib_advanced_testcase
         $this->assertTrue($response['status']);
     }
 
-    public function test_execute_with_invalid_organisation_id(): void
-    {
+    /**
+     * Test the execute with invalid organisationid.
+     * @covers ::execute
+     * @return void
+     */
+    public function test_execute_with_invalid_organisation_id(): void {
         $this->resetAfterTest(true);
 
         set_config('organisationid', 'org1', 'local_teachermatic');
@@ -83,8 +97,12 @@ class ping_test extends externallib_advanced_testcase
         );
     }
 
-    public function test_execute_with_no_organisation_id_configured(): void
-    {
+    /**
+     * Test the execute when no organisationid configured.
+     * @covers ::execute
+     * @return void
+     */
+    public function test_execute_with_no_organisation_id_configured(): void {
         $this->resetAfterTest(true);
 
         unset_config('organisationid', 'local_teachermatic');
