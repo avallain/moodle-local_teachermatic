@@ -36,8 +36,11 @@ use stdClass;
  */
 class create_shortanswer extends external_api
 {
-    public static function execute_parameters(): external_function_parameters
-    {
+    /**
+     * Returns description of method parameters
+     * @return external_function_parameters
+     */
+    public static function execute_parameters(): external_function_parameters {
         return new external_function_parameters([
             'course_id' => new external_value(PARAM_INT, 'The course ID', VALUE_REQUIRED),
             'email' => new external_value(PARAM_EMAIL, 'The user email address', VALUE_REQUIRED),
@@ -48,92 +51,84 @@ class create_shortanswer extends external_api
                         new external_value(PARAM_TEXT, 'The answer option')
                     ),
                 ])
-            ), 
+            ),
         ]);
     }
 
-    public static function execute(int $courseId, string $email, array $questions): array
-    {
+    /**
+     * Insert shortanswer question into course question bank
+     * @param integer $courseid
+     * @param string $email
+     * @param array $questions
+     * @return array
+     */
+    public static function execute(int $courseid, string $email, array $questions): array {
         global $CFG;
         require_once($CFG->libdir . '/questionlib.php');
-        
+
         $params = self::validate_parameters(self::execute_parameters(), [
-            'course_id' => $courseId,
+            'course_id' => $courseid,
             'email' => $email,
-            'questions' => $questions
+            'questions' => $questions,
         ]);
 
-        $storedOrgId = get_config('local_teachermatic', 'organisationid');
-        if (!$storedOrgId) {
+        $contextcourse = context_course::instance($params['course_id']);
+        self::validate_context($contextcourse);
+
+        $organisationid = get_config('local_teachermatic', 'organisationid');
+        if (!$organisationid) {
             throw new invalid_parameter_exception(get_string('service:noorganisationid', 'local_teachermatic'));
         }
 
-        $selectedUser = core_user::get_user_by_email($params['email'], 'id');
-        if (!$selectedUser) {
+        $user = core_user::get_user_by_email($params['email'], 'id');
+        if (!$user) {
             throw new invalid_parameter_exception(get_string('service:invalidemail', 'local_teachermatic'));
         }
-        
-        $contextCourse = context_course::instance($params['course_id']);
-        self::validate_context($contextCourse);
-        
-        // Perhaps we need to perform capability check(?)
-        // require_capability('moodle/question:add', $courseContext, $selectedUser->id);
-        
-        $selectedUserRoles = get_user_roles_in_course($selectedUser->id, $params['course_id']);
-        $selectedUserRoles = explode(',', strtolower($selectedUserRoles));
-        $selectedUserRoles = array_map(fn($value): string => trim(strip_tags($value)), $selectedUserRoles);
 
-        if(!in_array('teacher', $selectedUserRoles)){ // teacher == editingteacher
-            throw new invalid_parameter_exception(get_string('service:create_shortanswer:invalidrole', 'local_teachermatic'));
-        }
-        
+        require_capability('moodle/question:add', $contextcourse, $user->id);
+
         foreach ($params['questions'] as $question) {
+            // Context thingy.
+            $contexts = new \core_question\local\bank\question_edit_contexts($contextcourse);
+            $category = question_make_default_categories($contexts->all());
 
-            // Context thingy
-            $contexts = new \core_question\local\bank\question_edit_contexts($contextCourse);
-            $defaultCategory = question_make_default_categories($contexts->all());
-
-
-            // ensure the qtype is enabled
+            // Ensure the qtype is enabled.
             \core_question\local\bank\helper::require_plugin_enabled('qbank_editquestion');
 
-            // create empty question
-            $emptyquestion = new \stdClass();
+            $emptyquestion = new stdClass();
             $emptyquestion->qtype = 'shortanswer';
-
-            // create question_bank instance
             $qtypeobj = question_bank::get_qtype($emptyquestion->qtype);
-            // simulate form thingy
-            $newquestion = new \stdClass();
-            $newquestion->category = "{$defaultCategory->id},{$defaultCategory->contextid}";
+
+            // Simulate form thingy.
+            $newquestion = new stdClass();
+            $newquestion->category = "{$category->id},{$category->contextid}";
             $newquestion->qtype = $emptyquestion->qtype;
             $newquestion->name = $question['question'];
             $newquestion->questiontext['text'] = $question['question'];
             $newquestion->questiontext['format'] = FORMAT_HTML;
             $newquestion->parent = 0;
             $newquestion->length = 1;
-            $newquestion->defaultmark = 1; // IDK what this field means, but the default value is 1 and it is required
-            $newquestion->status = 'ready'; //ready;draft
+            $newquestion->defaultmark = 1; // IDK what this field means, but the default value is 1 and it is required.
+            $newquestion->status = 'ready';
             $newquestion->generalfeedback['text'] = '';
             $newquestion->generalfeedback['format'] = FORMAT_HTML;
-            $newquestion->usecase = 0; // Default 0; 0=No;1=Yes
-            $newquestion->penalty = 0.3333333; // default penalty value
+            $newquestion->usecase = 0;
+            $newquestion->penalty = 0.3333333; // Default penalty value.
 
-            // Define answers
-            // fraction=1=correct answer
+            // Fraction=1=correct answer.
             $answers = [];
             foreach ($question['answer'] as $answer) {
-                $fraction = (1 / count($question['answer'])); // there no need to * 100
+                $fraction = (1 / count($question['answer']));
                 $answers[] = [
                     'answer' => $answer,
-                    'fraction' => $fraction, // NOTE: Should we calculate it based on total answers * 100%(?)
-                    'feedback' => 'Correct!'
+                    'fraction' => $fraction,
+                    'feedback' => 'Correct!',
                 ];
             }
-            
+
             // Moodle need one of the answer is == 100% (1.0)
-            // to be able to get fullmark
-            // So, we hardcoded the last answer to be 100% correct
+            // to be able to get fullmark.
+            // So, we hardcoded the last answer to be 100% correct.
             $answers[count($question['answer']) - 1]['fraction'] = 1.0;
 
             $newquestion->answer = [];
@@ -151,19 +146,22 @@ class create_shortanswer extends external_api
                 $newquestion->feedback[] = $answerdata->feedback;
             }
 
-            // The save_question() func already implemented DB Transaction
-            $qtypeobj->save_question($emptyquestion, $newquestion); 
-        } 
-        
+            // The save_question() func already implemented DB Transaction.
+            $qtypeobj->save_question($emptyquestion, $newquestion);
+        }
+
         return [
             'status' => true,
-            'organisation_id' => $storedOrgId,
-            'questions' => $params['questions']
+            'organisation_id' => $organisationid,
+            'questions' => $params['questions'],
         ];
     }
 
-    public static function execute_returns(): external_single_structure
-    {
+    /**
+     * Return description of method result value
+     * @return external_single_structure
+     */
+    public static function execute_returns(): external_single_structure {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'The questions creation status'),
             'organisation_id' => new external_value(PARAM_TEXT, 'The organisation ID'),
@@ -174,7 +172,7 @@ class create_shortanswer extends external_api
                         new external_value(PARAM_TEXT, 'The answer option')
                     ),
                 ])
-            ), 
+            ),
         ]);
     }
 }

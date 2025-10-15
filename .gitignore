@@ -15,3 +15,5 @@
 .phpstorm.*
 .DS_Store
 CVS
+
+*postman_collection*

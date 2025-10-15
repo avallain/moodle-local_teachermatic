@@ -34,60 +34,57 @@ use core_user;
  */
 class get_courses extends external_api
 {
-    public static function execute_parameters(): external_function_parameters
-    {
+    /**
+     * Returns description of method parameters
+     * @return external_function_parameters
+     */
+    public static function execute_parameters(): external_function_parameters {
         return new external_function_parameters([
-            'email' => new external_value(PARAM_EMAIL, 'The user email address', VALUE_REQUIRED)
+            'email' => new external_value(PARAM_EMAIL, 'The user email address', VALUE_REQUIRED),
         ]);
     }
 
-    public static function execute(string $email): array
-    {
+    /**
+     * Fetch and returns courses where $email
+     * is enrolled as editingteacher.
+     * @param string $email
+     * @return array
+     */
+    public static function execute(string $email): array {
         global $DB;
-        
+
         $params = self::validate_parameters(self::execute_parameters(), ['email' => $email]);
 
-        $storedOrgId = get_config('local_teachermatic', 'organisationid');
-        if (!$storedOrgId) {
+        $organisationid = get_config('local_teachermatic', 'organisationid');
+        if (!$organisationid) {
             throw new invalid_parameter_exception(get_string('service:noorganisationid', 'local_teachermatic'));
         }
-        
-        $selectedUser = core_user::get_user_by_email($params['email'], 'id');
-        if (!$selectedUser) {
+
+        $user = core_user::get_user_by_email($params['email']);
+        if (!$user) {
             throw new invalid_parameter_exception(get_string('service:invalidemail', 'local_teachermatic'));
         }
 
-        $editingTeacherRole = $DB->get_record(
-            'role', 
-            ['shortname' => 'editingteacher'],
-            '*',
-            MUST_EXIST
+        [, $courses] = get_user_capability_contexts(
+            'moodle/course:update',
+            false,
+            $user->id,
+            true,
+            'fullname,shortname'
         );
-
-        $userCoursesQuery = "
-            SELECT c.id, c.fullname, c.shortname
-            FROM {role_assignments} ra
-            JOIN {context} ctx ON ctx.id = ra.contextid
-            JOIN {course} c ON c.id = ctx.instanceid
-            WHERE ra.userid = :userid
-              AND ra.roleid = :roleid
-              AND ctx.contextlevel = :contextlevel
-        ";
-        $userCourses = $DB->get_records_sql($userCoursesQuery, [
-            'userid' => $selectedUser->id,
-            'roleid' => $editingTeacherRole->id,
-            'contextlevel' => CONTEXT_COURSE
-        ]);
 
         return [
             'status' => true,
-            'organisation_id' => $storedOrgId,
-            'courses' => (!empty($userCourses)) ? $userCourses : [],
+            'organisation_id' => $organisationid,
+            'courses' => array_values($courses),
         ];
     }
 
-    public static function execute_returns(): external_single_structure
-    {
+    /**
+     * Return description of method result value
+     * @return external_single_structure
+     */
+    public static function execute_returns(): external_single_structure {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'The web service status'),
             'organisation_id' => new external_value(PARAM_TEXT, 'The organisation ID'),
@@ -97,7 +94,7 @@ class get_courses extends external_api
                     'shortname' => new external_value(PARAM_TEXT, 'The course short name'),
                     'fullname' => new external_value(PARAM_TEXT, 'The course full name'),
                 ])
-            )
+            ),
         ]);
     }
 }
