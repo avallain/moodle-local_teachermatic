@@ -154,7 +154,7 @@ class create_course_mod_resource extends external_api
             'filearea'  => 'content',
             'itemid'    => 0,
             'filepath'  => '/',
-            'file_name'  => basename($params['file_name']),
+            'filename'  => basename($params['file_name']),
         ];
 
         // NOTE: Perhaps we need to handle when the server response with 302 code.
