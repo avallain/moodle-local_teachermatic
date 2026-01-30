@@ -24,6 +24,16 @@
 
 $string['error:cannotaddcoursemoduletosection'] = 'Can not add course module to section.';
 $string['error:coursemodulenotenabled'] = 'Course module is not enabled';
+$string['error:event:createcoursemodresourcefailed'] = 'Course mod resource creation failed.';
+$string['error:event:createcoursemodresourcefaileddescription'] = 'User {$a->userid} failed to export file from TeacherMatic in course {$a->courseid}. Error: {$a->message}';
+$string['error:event:createmultichoicefailed'] = 'Multichoice question creation failed.';
+$string['error:event:createmultichoicefaileddescription'] = 'User {$a->userid} failed to export multichoice questions from TeacherMatic in course {$a->courseid}. Error: {$a->message}';
+$string['error:event:createshortanswerfailed'] = 'Short answer question creation failed.';
+$string['error:event:createshortanswerfaileddescription'] = 'User {$a->userid} failed to export shortanswer questions from TeacherMatic in course {$a->courseid}. Error: {$a->message}';
+$string['error:event:createtruefalsefailed'] = 'True false question creation failed.';
+$string['error:event:createtruefalsefaileddescription'] = 'User {$a->userid} failed to export truefalse questions from TeacherMatic in course {$a->courseid}. Error: {$a->message}';
+$string['error:event:trace'] = ' | Trace: {$a->trace}';
+$string['error:invalidquestioncategory'] = 'Invalid question category.';
 $string['pluginname'] = 'Teachermatic';
 $string['privacy:metadata'] = 'The Teachermatic external service only intercat with course(s) especially Question Bank it is only uses user email address and the course ID that is stored within Moodle data.';
 $string['service:invalidemail'] = 'The email address is not registered.';

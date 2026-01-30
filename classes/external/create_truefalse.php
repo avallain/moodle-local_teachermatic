@@ -17,15 +17,20 @@
 namespace local_teachermatic\external;
 
 use context_course;
+use context_module;
 use core\exception\invalid_parameter_exception;
+use core\exception\moodle_exception;
 use core_external\external_api;
 use core_external\external_function_parameters;
 use core_external\external_multiple_structure;
 use core_external\external_single_structure;
 use core_external\external_value;
+use core_question\local\bank\question_bank_helper;
 use core_user;
+use local_teachermatic\event\create_truefalse_failed;
 use question_bank;
 use stdClass;
+use Throwable;
 
 /**
  * Web service to create truefalse questions
@@ -42,13 +47,27 @@ class create_truefalse extends external_api
      */
     public static function execute_parameters(): external_function_parameters {
         return new external_function_parameters([
-            'course_id' => new external_value(PARAM_INT, 'The course ID', VALUE_REQUIRED),
-            'email' => new external_value(PARAM_EMAIL, 'The user email address', VALUE_REQUIRED),
-            'questions' => new external_multiple_structure(
+            "course_id" => new external_value(
+                PARAM_INT,
+                "The course ID",
+                VALUE_REQUIRED,
+            ),
+            "email" => new external_value(
+                PARAM_EMAIL,
+                "The user email address",
+                VALUE_REQUIRED,
+            ),
+            "questions" => new external_multiple_structure(
                 new external_single_structure([
-                    'question' => new external_value(PARAM_TEXT, 'The generated question'),
-                    'answer' => new external_value(PARAM_BOOL, 'The correct answer'),
-                ])
+                    "question" => new external_value(
+                        PARAM_TEXT,
+                        "The generated question",
+                    ),
+                    "answer" => new external_value(
+                        PARAM_BOOL,
+                        "The correct answer",
+                    ),
+                ]),
             ),
         ]);
     }
@@ -60,74 +79,102 @@ class create_truefalse extends external_api
      * @param array $questions
      * @return array
      */
-    public static function execute(int $courseid, string $email, array $questions): array {
+    public static function execute(
+        int $courseid,
+        string $email,
+        array $questions,
+    ): array {
         global $CFG;
-        require_once($CFG->libdir . '/questionlib.php');
+        require_once($CFG->libdir . "/questionlib.php");
 
         $params = self::validate_parameters(self::execute_parameters(), [
-            'course_id' => $courseid,
-            'email' => $email,
-            'questions' => $questions,
+            "course_id" => $courseid,
+            "email" => $email,
+            "questions" => $questions,
         ]);
 
-        $contextcourse = context_course::instance($params['course_id']);
+        $contextcourse = context_course::instance($params["course_id"]);
         self::validate_context($contextcourse);
 
-        $organisationid = get_config('local_teachermatic', 'organisationid');
+        $organisationid = get_config("local_teachermatic", "organisationid");
         if (!$organisationid) {
-            throw new invalid_parameter_exception(get_string('service:noorganisationid', 'local_teachermatic'));
+            throw new invalid_parameter_exception(
+                get_string("service:noorganisationid", "local_teachermatic"),
+            );
         }
 
-        $user = core_user::get_user_by_email($params['email'], 'id');
+        $user = core_user::get_user_by_email($params["email"], "id");
         if (!$user) {
-            throw new invalid_parameter_exception(get_string('service:invalidemail', 'local_teachermatic'));
+            throw new invalid_parameter_exception(
+                get_string("service:invalidemail", "local_teachermatic"),
+            );
         }
 
-        require_capability('moodle/question:add', $contextcourse, $user->id);
+        \core_question\local\bank\helper::require_plugin_enabled("qbank_editquestion");
+        require_capability("moodle/question:add", $contextcourse, $user->id);
 
-        foreach ($params['questions'] as $question) {
-            // Context thingy.
-            $contexts = new \core_question\local\bank\question_edit_contexts($contextcourse);
-            $category = question_make_default_categories($contexts->all());
+        try {
+            $category = null;
+            $course = get_course($courseid);
+            $cm = question_bank_helper::get_default_open_instance_system_type(
+                $course,
+                true,
+            );
 
-            // Ensure the qtype is enabled.
-            \core_question\local\bank\helper::require_plugin_enabled('qbank_editquestion');
+            $context = context_module::instance($cm->id);
+            $category = question_get_default_category($context->id, true);
+            if (!$category) {
+                throw new moodle_exception(get_string("error:invalidquestioncategory", "local_teachermatic"));
+            }
 
-            $emptyquestion = new stdClass();
-            $emptyquestion->qtype = 'truefalse';
-            $qtypeobj = question_bank::get_qtype($emptyquestion->qtype);
+            foreach ($params["questions"] as $question) {
+                $emptyquestion = new stdClass();
+                $emptyquestion->qtype = "truefalse";
+                $qtypeobj = question_bank::get_qtype($emptyquestion->qtype);
 
-            // Simulate form thingy.
-            $newquestion = new stdClass();
-            $newquestion->category = "{$category->id},{$category->contextid}";
-            $newquestion->name = $question['question'];
-            $newquestion->qtype = $emptyquestion->qtype;
-            $newquestion->parent = 0;
-            $newquestion->length = 1;
-            $newquestion->penalty = 1.0; // Default penalty value.
-            $newquestion->questiontext['text'] = $question['question'];
-            $newquestion->questiontext['format'] = FORMAT_HTML;
-            $newquestion->status = 'ready';
-            $newquestion->defaultmark = 1;
-            $newquestion->generalfeedback['text'] = '';
-            $newquestion->generalfeedback['format'] = FORMAT_HTML;
-            $newquestion->showstandardinstruction = 0;
+                // Simulate form thingy.
+                $newquestion = new stdClass();
+                $newquestion->category = "{$category->id},{$category->contextid}";
+                $newquestion->name = $question["question"];
+                $newquestion->qtype = $emptyquestion->qtype;
+                $newquestion->parent = 0;
+                $newquestion->length = 1;
+                $newquestion->penalty = 1.0; // Default penalty value.
+                $newquestion->questiontext["text"] = $question["question"];
+                $newquestion->questiontext["format"] = FORMAT_HTML;
+                $newquestion->status = "ready";
+                $newquestion->defaultmark = 1;
+                $newquestion->generalfeedback["text"] = "";
+                $newquestion->generalfeedback["format"] = FORMAT_HTML;
+                $newquestion->showstandardinstruction = 0;
 
-            $newquestion->correctanswer = $question['answer'] ? 1 : 0;
-            $newquestion->feedbacktrue['text'] = '';
-            $newquestion->feedbacktrue['format'] = FORMAT_HTML;
-            $newquestion->feedbackfalse['text'] = '';
-            $newquestion->feedbackfalse['format'] = FORMAT_HTML;
+                $newquestion->correctanswer = $question["answer"] ? 1 : 0;
+                $newquestion->feedbacktrue["text"] = "";
+                $newquestion->feedbacktrue["format"] = FORMAT_HTML;
+                $newquestion->feedbackfalse["text"] = "";
+                $newquestion->feedbackfalse["format"] = FORMAT_HTML;
 
-            // The save_question() func already implemented DB Transaction.
-            $qtypeobj->save_question($emptyquestion, $newquestion);
+                // The save_question() func already implemented DB Transaction.
+                $qtypeobj->save_question($emptyquestion, $newquestion);
+            }
+            return [
+                "status" => true,
+                "organisation_id" => $organisationid,
+                "questions" => $params["questions"],
+            ];
+        } catch (Throwable $e) {
+            create_truefalse_failed::create([
+                "context" => $contextcourse,
+                "relateduserid" => $user->id,
+                "other" => [
+                    "message" => $e->getMessage(),
+                    "file" => $e->getFile(),
+                    "line" => $e->getLine(),
+                    "trace" => $e->getTraceAsString(),
+                ],
+            ])->trigger();
+            throw $e;
         }
-
-        return [
-            'status' => true,
-            'organisation_id' => $organisationid,
-            'questions' => $params['questions'],
-        ];
     }
 
     /**
@@ -136,13 +183,25 @@ class create_truefalse extends external_api
      */
     public static function execute_returns(): external_single_structure {
         return new external_single_structure([
-            'status' => new external_value(PARAM_BOOL, 'The questions creation status'),
-            'organisation_id' => new external_value(PARAM_TEXT, 'The organisation ID'),
-            'questions' => new external_multiple_structure(
+            "status" => new external_value(
+                PARAM_BOOL,
+                "The questions creation status",
+            ),
+            "organisation_id" => new external_value(
+                PARAM_TEXT,
+                "The organisation ID",
+            ),
+            "questions" => new external_multiple_structure(
                 new external_single_structure([
-                    'question' => new external_value(PARAM_TEXT, 'The generated question'),
-                    'answer' => new external_value(PARAM_BOOL, 'The correct answer'),
-                ])
+                    "question" => new external_value(
+                        PARAM_TEXT,
+                        "The generated question",
+                    ),
+                    "answer" => new external_value(
+                        PARAM_BOOL,
+                        "The correct answer",
+                    ),
+                ]),
             ),
         ]);
     }

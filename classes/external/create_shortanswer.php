@@ -17,15 +17,20 @@
 namespace local_teachermatic\external;
 
 use context_course;
+use context_module;
 use core\exception\invalid_parameter_exception;
+use core\exception\moodle_exception;
 use core_external\external_api;
 use core_external\external_function_parameters;
 use core_external\external_multiple_structure;
 use core_external\external_single_structure;
 use core_external\external_value;
+use core_question\local\bank\question_bank_helper;
 use core_user;
+use local_teachermatic\event\create_shortanswer_failed;
 use question_bank;
 use stdClass;
+use Throwable;
 
 /**
  * Web service to create shortanswer questions
@@ -85,76 +90,100 @@ class create_shortanswer extends external_api
             throw new invalid_parameter_exception(get_string('service:invalidemail', 'local_teachermatic'));
         }
 
-        require_capability('moodle/question:add', $contextcourse, $user->id);
+        require_capability("moodle/question:add", $contextcourse, $user->id);
+        \core_question\local\bank\helper::require_plugin_enabled("qbank_editquestion");
 
-        foreach ($params['questions'] as $question) {
-            // Context thingy.
-            $contexts = new \core_question\local\bank\question_edit_contexts($contextcourse);
-            $category = question_make_default_categories($contexts->all());
+        try {
+            $category = null;
+            $course = get_course($courseid);
+            $cm = question_bank_helper::get_default_open_instance_system_type(
+                $course,
+                true,
+            );
 
-            // Ensure the qtype is enabled.
-            \core_question\local\bank\helper::require_plugin_enabled('qbank_editquestion');
+            $context = context_module::instance($cm->id);
+            $category = question_get_default_category($context->id, true);
 
-            $emptyquestion = new stdClass();
-            $emptyquestion->qtype = 'shortanswer';
-            $qtypeobj = question_bank::get_qtype($emptyquestion->qtype);
+            if (!$category) {
+                throw new moodle_exception(
+                    get_string("error:invalidquestioncategory", "local_teachermatic"),
+                );
+            }
 
-            // Simulate form thingy.
-            $newquestion = new stdClass();
-            $newquestion->category = "{$category->id},{$category->contextid}";
-            $newquestion->qtype = $emptyquestion->qtype;
-            $newquestion->name = $question['question'];
-            $newquestion->questiontext['text'] = $question['question'];
-            $newquestion->questiontext['format'] = FORMAT_HTML;
-            $newquestion->parent = 0;
-            $newquestion->length = 1;
-            $newquestion->defaultmark = 1; // IDK what this field means, but the default value is 1 and it is required.
-            $newquestion->status = 'ready';
-            $newquestion->generalfeedback['text'] = '';
-            $newquestion->generalfeedback['format'] = FORMAT_HTML;
-            $newquestion->usecase = 0;
-            $newquestion->penalty = 0.3333333; // Default penalty value.
+            foreach ($params['questions'] as $question) {
+                $emptyquestion = new stdClass();
+                $emptyquestion->qtype = 'shortanswer';
+                $qtypeobj = question_bank::get_qtype($emptyquestion->qtype);
 
-            // Fraction=1=correct answer.
-            $answers = [];
-            foreach ($question['answer'] as $answer) {
-                $fraction = (1 / count($question['answer']));
-                $answers[] = [
+                $newquestion = new stdClass();
+                $newquestion->category = "{$category->id},{$category->contextid}";
+                $newquestion->qtype = $emptyquestion->qtype;
+                $newquestion->name = $question['question'];
+                $newquestion->questiontext['text'] = $question['question'];
+                $newquestion->questiontext['format'] = FORMAT_HTML;
+                $newquestion->parent = 0;
+                $newquestion->length = 1;
+                $newquestion->defaultmark = 1; // IDK what this field means, but the default value is 1 and it is required.
+                $newquestion->status = 'ready';
+                $newquestion->generalfeedback['text'] = '';
+                $newquestion->generalfeedback['format'] = FORMAT_HTML;
+                $newquestion->usecase = 0;
+                $newquestion->penalty = 0.3333333; // Default penalty value.
+
+                // Fraction=1=correct answer.
+                $answers = [];
+                foreach ($question['answer'] as $answer) {
+                    $fraction = (1 / count($question['answer']));
+                    $answers[] = [
                     'answer' => $answer,
                     'fraction' => $fraction,
                     'feedback' => 'Correct!',
-                ];
+                    ];
+                }
+
+                // Moodle need one of the answer is == 100% (1.0)
+                // to be able to get fullmark.
+                // So, we hardcoded the last answer to be 100% correct.
+                $answers[count($question['answer']) - 1]['fraction'] = 1.0;
+
+                $newquestion->answer = [];
+                $newquestion->fraction = [];
+                $newquestion->feedback = [];
+                foreach ($answers as $answer) {
+                    $answerdata = new stdClass();
+                    $answerdata->answer = $answer['answer'];
+                    $answerdata->fraction = $answer['fraction'];
+                    $answerdata->feedback['text'] = $answer['feedback'];
+                    $answerdata->feedback['format'] = FORMAT_HTML;
+
+                    $newquestion->answer[] = $answerdata->answer;
+                    $newquestion->fraction[] = $answerdata->fraction;
+                    $newquestion->feedback[] = $answerdata->feedback;
+                }
+
+                // The save_question() func already implemented DB Transaction.
+                $qtypeobj->save_question($emptyquestion, $newquestion);
             }
 
-            // Moodle need one of the answer is == 100% (1.0)
-            // to be able to get fullmark.
-            // So, we hardcoded the last answer to be 100% correct.
-            $answers[count($question['answer']) - 1]['fraction'] = 1.0;
+            return [
+                'status' => true,
+                'organisation_id' => $organisationid,
+                'questions' => $params['questions'],
+            ];
+        } catch (Throwable $e) {
+            create_shortanswer_failed::create([
+                "context" => $contextcourse,
+                "relateduserid" => $user->id,
+                "other" => [
+                    "message" => $e->getMessage(),
+                    "file" => $e->getFile(),
+                    "line" => $e->getLine(),
+                    "trace" => $e->getTraceAsString(),
+                ],
+            ])->trigger();
 
-            $newquestion->answer = [];
-            $newquestion->fraction = [];
-            $newquestion->feedback = [];
-            foreach ($answers as $answer) {
-                $answerdata = new stdClass();
-                $answerdata->answer = $answer['answer'];
-                $answerdata->fraction = $answer['fraction'];
-                $answerdata->feedback['text'] = $answer['feedback'];
-                $answerdata->feedback['format'] = FORMAT_HTML;
-
-                $newquestion->answer[] = $answerdata->answer;
-                $newquestion->fraction[] = $answerdata->fraction;
-                $newquestion->feedback[] = $answerdata->feedback;
-            }
-
-            // The save_question() func already implemented DB Transaction.
-            $qtypeobj->save_question($emptyquestion, $newquestion);
+            throw $e;
         }
-
-        return [
-            'status' => true,
-            'organisation_id' => $organisationid,
-            'questions' => $params['questions'],
-        ];
     }
 
     /**

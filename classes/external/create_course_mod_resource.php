@@ -27,7 +27,9 @@ use core_external\external_function_parameters;
 use core_external\external_single_structure;
 use core_external\external_value;
 use core_user;
+use local_teachermatic\event\create_course_mod_resource_failed;
 use stdClass;
+use Throwable;
 
 global $CFG;
 require_once($CFG->dirroot . '/lib/resourcelib.php');
@@ -92,85 +94,99 @@ class create_course_mod_resource extends external_api
 
         require_capability('mod/resource:addinstance', $contextcourse, $user->id);
 
-        // File activity is = 'mod_resource' = 'resource' in 'modules' table.
-        $modresource = $DB->get_record('modules', ['name' => 'resource'], '*', MUST_EXIST);
-        if ($modresource->visible == 0) {
-            throw new moodle_exception(
-                'error:coursemodulenotenabled',
-                'local_teachermatic',
-                '',
-                null,
-                'mod_resource is not enable'
+        try {
+            // File activity is = 'mod_resource' = 'resource' in 'modules' table.
+            $modresource = $DB->get_record('modules', ['name' => 'resource'], '*', MUST_EXIST);
+            if ($modresource->visible == 0) {
+                throw new moodle_exception(
+                    'error:coursemodulenotenabled',
+                    'local_teachermatic',
+                    '',
+                    null,
+                    'mod_resource is not enable'
+                );
+            }
+
+            $course = get_course($params['course_id']);
+
+            // Use moodle transaction to prevent creating empty module
+            // when there is an error while downloading the file.
+            $transaction = $DB->start_delegated_transaction();
+
+            $draftitemid = 0;
+            file_prepare_draft_area(
+                $draftitemid,
+                $contextcourse->id,
+                'mod_resource',
+                'content',
+                0,
+                ['subdirs' => true]
             );
+
+            $resource = new stdClass();
+            $resource->modulename = $modresource->name;
+            $resource->module = $modresource->id;
+            $resource->section = $params['section_id'];
+            $resource->course = $course->id;
+            $resource->name = $params['file_name'];
+            $resource->introformat = FORMAT_HTML;
+            $resource->display = RESOURCELIB_DISPLAY_OPEN;
+            $resource->showdescription = 1;
+            $resource->visible = 1;
+            $resource->files = 0;
+
+            $module = add_moduleinfo($resource, $course, null);
+
+            if (!$module) {
+                throw new moodle_exception(
+                    'error:cannotaddcoursemoduletosection',
+                    'local_teachermatic',
+                    '',
+                    null,
+                    'can not add a new module'
+                );
+            }
+
+            $contextmodule = context_module::instance($module->coursemodule);
+            $fs = get_file_storage();
+
+            // Ref: mod/resource/mod_form.php L157.
+            $fileinfo = [
+                'contextid' => $contextmodule->id,
+                'component' => 'mod_' . $modresource->name, // File upload = mod_resource.
+                'filearea'  => 'content',
+                'itemid'    => 0,
+                'filepath'  => '/',
+                'filename'  => basename($params['file_name']),
+            ];
+
+            // NOTE: Perhaps we need to handle when the server response with 302 code.
+            $fs->create_file_from_url($fileinfo, $params['file_url']);
+
+            $transaction->allow_commit();
+
+            return [
+                'status' => true,
+                'organisation_id' => $organisationid,
+                'module' => [
+                    'id' => $module->id,
+                    'name' => $module->name,
+                    'module' => $modresource->name,
+                ],
+            ];
+        } catch (Throwable $e) {
+            create_course_mod_resource_failed::create([
+                "context" => $contextcourse,
+                "relateduserid" => $user->id,
+                "other" => [
+                    "message" => $e->getMessage(),
+                    "file" => $e->getFile(),
+                    "line" => $e->getLine(),
+                    "trace" => $e->getTraceAsString(),
+                ],
+            ])->trigger();
+            throw $e;
         }
-
-        $course = get_course($params['course_id']);
-
-        // Use moodle transaction to prevent creating empty module
-        // when there is an error while downloading the file.
-        $transaction = $DB->start_delegated_transaction();
-
-        $draftitemid = 0;
-        file_prepare_draft_area(
-            $draftitemid,
-            $contextcourse->id,
-            'mod_resource',
-            'content',
-            0,
-            ['subdirs' => true]
-        );
-
-        $resource = new stdClass();
-        $resource->modulename = $modresource->name;
-        $resource->module = $modresource->id;
-        $resource->section = $params['section_id'];
-        $resource->course = $course->id;
-        $resource->name = $params['file_name'];
-        $resource->introformat = FORMAT_HTML;
-        $resource->display = RESOURCELIB_DISPLAY_OPEN;
-        $resource->showdescription = 1;
-        $resource->visible = 1;
-        $resource->files = 0;
-
-        $module = add_moduleinfo($resource, $course, null);
-
-        if (!$module) {
-            throw new moodle_exception(
-                'error:cannotaddcoursemoduletosection',
-                'local_teachermatic',
-                '',
-                null,
-                'can not add a new module'
-            );
-        }
-
-        $contextmodule = context_module::instance($module->coursemodule);
-        $fs = get_file_storage();
-
-        // Ref: mod/resource/mod_form.php L157.
-        $fileinfo = [
-            'contextid' => $contextmodule->id,
-            'component' => 'mod_' . $modresource->name, // File upload = mod_resource.
-            'filearea'  => 'content',
-            'itemid'    => 0,
-            'filepath'  => '/',
-            'filename'  => basename($params['file_name']),
-        ];
-
-        // NOTE: Perhaps we need to handle when the server response with 302 code.
-        $fs->create_file_from_url($fileinfo, $params['file_url']);
-
-        $transaction->allow_commit();
-
-        return [
-            'status' => true,
-            'organisation_id' => $organisationid,
-            'module' => [
-                'id' => $module->id,
-                'name' => $module->name,
-                'module' => $modresource->name,
-            ],
-        ];
     }
 
     /**

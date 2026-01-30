@@ -17,15 +17,20 @@
 namespace local_teachermatic\external;
 
 use context_course;
+use context_module;
 use core\exception\invalid_parameter_exception;
+use core\exception\moodle_exception;
 use core_external\external_api;
 use core_external\external_function_parameters;
 use core_external\external_multiple_structure;
 use core_external\external_single_structure;
 use core_external\external_value;
+use core_question\local\bank\question_bank_helper;
 use core_user;
+use local_teachermatic\event\create_multichoice_failed;
 use question_bank;
 use stdClass;
+use Throwable;
 
 /**
  * Web service to create multichoice questions
@@ -42,16 +47,30 @@ class create_multichoice extends external_api
      */
     public static function execute_parameters(): external_function_parameters {
         return new external_function_parameters([
-            'course_id' => new external_value(PARAM_INT, 'The course ID', VALUE_REQUIRED),
-            'email' => new external_value(PARAM_EMAIL, 'The user email address', VALUE_REQUIRED),
-            'questions' => new external_multiple_structure(
+            "course_id" => new external_value(
+                PARAM_INT,
+                "The course ID",
+                VALUE_REQUIRED,
+            ),
+            "email" => new external_value(
+                PARAM_EMAIL,
+                "The user email address",
+                VALUE_REQUIRED,
+            ),
+            "questions" => new external_multiple_structure(
                 new external_single_structure([
-                    'question' => new external_value(PARAM_TEXT, 'The generated question'),
-                    'answer' => new external_value(PARAM_TEXT, 'The correct answer'),
-                    'options' => new external_multiple_structure(
-                        new external_value(PARAM_TEXT, 'The answer option')
+                    "question" => new external_value(
+                        PARAM_TEXT,
+                        "The generated question",
                     ),
-                ])
+                    "answer" => new external_value(
+                        PARAM_TEXT,
+                        "The correct answer",
+                    ),
+                    "options" => new external_multiple_structure(
+                        new external_value(PARAM_TEXT, "The answer option"),
+                    ),
+                ]),
             ),
         ]);
     }
@@ -63,110 +82,141 @@ class create_multichoice extends external_api
      * @param array $questions
      * @return array
      */
-    public static function execute(int $courseid, string $email, array $questions): array {
+    public static function execute(
+        int $courseid,
+        string $email,
+        array $questions,
+    ): array {
         global $CFG;
-        require_once($CFG->libdir . '/questionlib.php');
+        require_once($CFG->libdir . "/questionlib.php");
 
         $params = self::validate_parameters(self::execute_parameters(), [
-            'course_id' => $courseid,
-            'email' => $email,
-            'questions' => $questions,
+            "course_id" => $courseid,
+            "email" => $email,
+            "questions" => $questions,
         ]);
 
-        $contextcourse = context_course::instance($params['course_id']);
+        $contextcourse = context_course::instance($params["course_id"]);
         self::validate_context($contextcourse);
 
-        $organisationid = get_config('local_teachermatic', 'organisationid');
+        $organisationid = get_config("local_teachermatic", "organisationid");
         if (!$organisationid) {
-            throw new invalid_parameter_exception(get_string('service:noorganisationid', 'local_teachermatic'));
+            throw new invalid_parameter_exception(
+                get_string("service:noorganisationid", "local_teachermatic"),
+            );
         }
 
-        $user = core_user::get_user_by_email($params['email'], 'id');
+        $user = core_user::get_user_by_email($params["email"], "id");
         if (!$user) {
-            throw new invalid_parameter_exception(get_string('service:invalidemail', 'local_teachermatic'));
+            throw new invalid_parameter_exception(
+                get_string("service:invalidemail", "local_teachermatic"),
+            );
         }
 
-        require_capability('moodle/question:add', $contextcourse, $user->id);
+        require_capability("moodle/question:add", $contextcourse, $user->id);
+        \core_question\local\bank\helper::require_plugin_enabled("qbank_editquestion");
 
-        foreach ($params['questions'] as $question) {
-            // Context thingy.
-            $contexts = new \core_question\local\bank\question_edit_contexts($contextcourse);
-            $category = question_make_default_categories($contexts->all());
+        try {
+            $category = null;
+            $course = get_course($courseid);
+            $cm = question_bank_helper::get_default_open_instance_system_type(
+                $course,
+                true,
+            );
 
-            // Ensure the qtype is enabled.
-            \core_question\local\bank\helper::require_plugin_enabled('qbank_editquestion');
+            $context = context_module::instance($cm->id);
+            $category = question_get_default_category($context->id, true);
+            if (!$category) {
+                throw new moodle_exception(
+                    get_string("error:invalidquestioncategory", "local_teachermatic"),
+                );
+            }
 
-            $emptyquestion = new stdClass();
-            $emptyquestion->qtype = 'multichoice';
-            $qtypeobj = question_bank::get_qtype($emptyquestion->qtype);
+            foreach ($params["questions"] as $question) {
+                $emptyquestion = new stdClass();
+                $emptyquestion->qtype = "multichoice";
+                $qtypeobj = question_bank::get_qtype($emptyquestion->qtype);
 
-            // Simulate form thingy.
-            $newquestion = new stdClass();
-            $newquestion->category = "{$category->id},{$category->contextid}";
-            $newquestion->name = $question['question'];
-            $newquestion->qtype = $emptyquestion->qtype;
-            $newquestion->parent = 0;
-            $newquestion->length = 1;
-            $newquestion->penalty = 0.3333333; // Default penalty value.
-            $newquestion->questiontext['text'] = $question['question'];
-            $newquestion->questiontext['format'] = FORMAT_HTML;
-            $newquestion->generalfeedback['text'] = '';
-            $newquestion->generalfeedback['format'] = FORMAT_HTML;
-            $newquestion->correctfeedback['text'] = '';
-            $newquestion->correctfeedback['format'] = FORMAT_HTML;
-            $newquestion->partiallycorrectfeedback['text'] = '';
-            $newquestion->partiallycorrectfeedback['format'] = FORMAT_HTML;
-            $newquestion->incorrectfeedback['text'] = '';
-            $newquestion->incorrectfeedback['format'] = FORMAT_HTML;
-            $newquestion->single = 1; // One or multiple answers?0=multiple1=single.
-            $newquestion->answernumbering = "none"; // Available options: abc, ABC, iii, III.
-            $newquestion->shuffleanswers = 1; // 1=true
-            $newquestion->showstandardinstruction = 0;
-            $newquestion->defaultmark = 1; // IDK what this field means, but the default value is 1 and it is required.
+                $newquestion = new stdClass();
+                $newquestion->category = "{$category->id},{$category->contextid}";
+                $newquestion->name = $question["question"];
+                $newquestion->qtype = $emptyquestion->qtype;
+                $newquestion->parent = 0;
+                $newquestion->length = 1;
+                $newquestion->penalty = 0.3333333; // Default penalty value.
+                $newquestion->questiontext["text"] = $question["question"];
+                $newquestion->questiontext["format"] = FORMAT_HTML;
+                $newquestion->generalfeedback["text"] = "";
+                $newquestion->generalfeedback["format"] = FORMAT_HTML;
+                $newquestion->correctfeedback["text"] = "";
+                $newquestion->correctfeedback["format"] = FORMAT_HTML;
+                $newquestion->partiallycorrectfeedback["text"] = "";
+                $newquestion->partiallycorrectfeedback["format"] = FORMAT_HTML;
+                $newquestion->incorrectfeedback["text"] = "";
+                $newquestion->incorrectfeedback["format"] = FORMAT_HTML;
+                $newquestion->single = 1; // One or multiple answers?0=multiple1=single.
+                $newquestion->answernumbering = "none"; // Available options: abc, ABC, iii, III.
+                $newquestion->shuffleanswers = 1; // 1=true
+                $newquestion->showstandardinstruction = 0;
+                $newquestion->defaultmark = 1; // IDK what this field means, but the default value is 1 and it is required.
 
-            // Fraction=1=correct answer.
-            $answers = [];
-            foreach ($question['options'] as $option) {
-                if ($option == $question['answer']) {
-                    $answers[] = [
-                        'answer' => $option,
-                        'fraction' => 1.0,
-                        'feedback' => 'Correct!',
-                    ];
-                } else {
-                    $answers[] = [
-                        'answer' => $option,
-                        'fraction' => 0.0,
-                        'feedback' => 'Incorrect!',
-                    ];
+                // Fraction=1=correct answer.
+                $answers = [];
+                foreach ($question["options"] as $option) {
+                    if ($option == $question["answer"]) {
+                        $answers[] = [
+                            "answer" => $option,
+                            "fraction" => 1.0,
+                            "feedback" => "Correct!",
+                        ];
+                    } else {
+                        $answers[] = [
+                            "answer" => $option,
+                            "fraction" => 0.0,
+                            "feedback" => "Incorrect!",
+                        ];
+                    }
                 }
+
+                $newquestion->answer = [];
+                $newquestion->fraction = [];
+                $newquestion->feedback = [];
+                foreach ($answers as $answer) {
+                    $answerdata = new stdClass();
+                    $answerdata->answer["text"] = $answer["answer"];
+                    $answerdata->answer["format"] = FORMAT_HTML;
+                    $answerdata->fraction = $answer["fraction"];
+                    $answerdata->feedback["text"] = $answer["feedback"];
+                    $answerdata->feedback["format"] = FORMAT_HTML;
+
+                    $newquestion->answer[] = $answerdata->answer;
+                    $newquestion->fraction[] = $answerdata->fraction;
+                    $newquestion->feedback[] = $answerdata->feedback;
+                }
+
+                // The save_question() func already implemented DB Transaction.
+                $qtypeobj->save_question($emptyquestion, $newquestion);
             }
 
-            $newquestion->answer = [];
-            $newquestion->fraction = [];
-            $newquestion->feedback = [];
-            foreach ($answers as $answer) {
-                $answerdata = new stdClass();
-                $answerdata->answer['text'] = $answer['answer'];
-                $answerdata->answer['format'] = FORMAT_HTML;
-                $answerdata->fraction = $answer['fraction'];
-                $answerdata->feedback['text'] = $answer['feedback'];
-                $answerdata->feedback['format'] = FORMAT_HTML;
+            return [
+                "status" => true,
+                "organisation_id" => $organisationid,
+                "questions" => $params["questions"],
+            ];
+        } catch (Throwable $e) {
+            create_multichoice_failed::create([
+                "context" => $contextcourse,
+                "relateduserid" => $user->id,
+                "other" => [
+                    "message" => $e->getMessage(),
+                    "file" => $e->getFile(),
+                    "line" => $e->getLine(),
+                    "trace" => $e->getTraceAsString(),
+                ],
+            ])->trigger();
 
-                $newquestion->answer[] = $answerdata->answer;
-                $newquestion->fraction[] = $answerdata->fraction;
-                $newquestion->feedback[] = $answerdata->feedback;
-            }
-
-            // The save_question() func already implemented DB Transaction.
-            $qtypeobj->save_question($emptyquestion, $newquestion);
+            throw $e;
         }
-
-        return [
-            'status' => true,
-            'organisation_id' => $organisationid,
-            'questions' => $params['questions'],
-        ];
     }
 
     /**
@@ -175,16 +225,28 @@ class create_multichoice extends external_api
      */
     public static function execute_returns(): external_single_structure {
         return new external_single_structure([
-            'status' => new external_value(PARAM_BOOL, 'The questions creation status'),
-            'organisation_id' => new external_value(PARAM_TEXT, 'The organisation ID'),
-            'questions' => new external_multiple_structure(
+            "status" => new external_value(
+                PARAM_BOOL,
+                "The questions creation status",
+            ),
+            "organisation_id" => new external_value(
+                PARAM_TEXT,
+                "The organisation ID",
+            ),
+            "questions" => new external_multiple_structure(
                 new external_single_structure([
-                    'question' => new external_value(PARAM_TEXT, 'The generated question'),
-                    'answer' => new external_value(PARAM_TEXT, 'The correct answer'),
-                    'options' => new external_multiple_structure(
-                        new external_value(PARAM_TEXT, 'The answer option')
+                    "question" => new external_value(
+                        PARAM_TEXT,
+                        "The generated question",
                     ),
-                ])
+                    "answer" => new external_value(
+                        PARAM_TEXT,
+                        "The correct answer",
+                    ),
+                    "options" => new external_multiple_structure(
+                        new external_value(PARAM_TEXT, "The answer option"),
+                    ),
+                ]),
             ),
         ]);
     }
